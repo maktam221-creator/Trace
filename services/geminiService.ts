@@ -147,12 +147,6 @@ export async function generateSamplePosts(): Promise<Omit<import('../types').Pos
         }))
     }));
     
-    // Ensure the new-user is always present for profile view consistency
-    const userExists = posts.some(p => p.userId === 'new-user');
-    if (!userExists) {
-        posts.push({ userId: "new-user", username: "مستخدم جديد", avatarUrl: "https://picsum.photos/seed/new-user/48", content: "مرحباً بالعالم! هذا هو أول منشور لي هنا. متحمس للتواصل معكم جميعاً.", comments: [], likes: 0, shares: 0 });
-    }
-    
     return posts;
 
   } catch (error) {

@@ -49,7 +49,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
   if (isMyProfile && !user) {
     user = {
         userId: myUserId,
-        username: 'مستخدم جديد',
+        username: 'مستخدم جديد', // This will be updated by auth user's display name, but as fallback.
         avatarUrl: myAvatarUrl,
     }
   }
@@ -126,7 +126,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
             </div>
 
             <h2 className="text-3xl font-bold text-gray-800">{user.username}</h2>
-            <p className="text-gray-500 mt-1">@{user.userId}</p>
+            <p className="text-gray-500 mt-1">@{user.userId.substring(0,8)}...</p>
             {!isMyProfile && (
                 <button 
                     onClick={() => onToggleFollow(userId)}
@@ -150,6 +150,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
                     <PostCard 
                       key={post.id} 
                       post={post} 
+                      myUserId={myUserId}
                       onSelectUser={onSelectUser}
                       onAddComment={onAddComment}
                       onShowToast={onShowToast}

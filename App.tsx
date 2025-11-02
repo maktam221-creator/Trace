@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Post, Comment } from './types';
 import { generateSamplePosts } from './services/geminiService';
@@ -10,13 +11,17 @@ import ProfilePage from './components/ProfilePage';
 import Toast from './components/Toast';
 import CreatePostWidget from './components/CreatePostWidget';
 import { SearchIcon } from './components/Icons';
+import AuthPage from './components/AuthPage';
+import { auth } from './firebase';
+import { onAuthStateChanged, User, signOut } from 'firebase/auth';
 
-const MY_USER_ID = 'new-user';
 const POSTS_STORAGE_KEY = 'aegypt_posts';
-const AVATAR_STORAGE_KEY = 'aegypt_avatar';
-const FOLLOWING_STORAGE_KEY = 'aegypt_following';
+const AVATAR_STORAGE_KEY_PREFIX = 'aegypt_avatar_';
+const FOLLOWING_STORAGE_KEY_PREFIX = 'aegypt_following_';
 
 const App: React.FC = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -25,15 +30,28 @@ const App: React.FC = () => {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [following, setFollowing] = useState<Set<string>>(new Set());
-  const [myAvatarUrl, setMyAvatarUrl] = useState(`https://picsum.photos/seed/${MY_USER_ID}/48`);
-
-  // Search state
+  const [myAvatarUrl, setMyAvatarUrl] = useState('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [searchResults, setSearchResults] = useState<Post[]>([]);
 
-
-  // Load data from localStorage on initial render, or generate if it doesn't exist
   useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setIsAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    const AVATAR_STORAGE_KEY = `${AVATAR_STORAGE_KEY_PREFIX}${user.uid}`;
+    const FOLLOWING_STORAGE_KEY = `${FOLLOWING_STORAGE_KEY_PREFIX}${user.uid}`;
+
     try {
       const storedPosts = localStorage.getItem(POSTS_STORAGE_KEY);
       const storedAvatar = localStorage.getItem(AVATAR_STORAGE_KEY);
@@ -68,59 +86,53 @@ const App: React.FC = () => {
         loadGeneratedPosts();
       }
 
-      if (storedAvatar) {
-        setMyAvatarUrl(storedAvatar);
-      }
+      setMyAvatarUrl(storedAvatar || `https://picsum.photos/seed/${user.uid}/48`);
       
       if (storedFollowing) {
         setFollowing(new Set(JSON.parse(storedFollowing)));
       }
     } catch (err) {
       console.error('Failed to load data from localStorage:', err);
-      setError('حدث خطأ أثناء تحميل بياناتك المحفوظة. سنقوم بإعادة تعيين البيانات.');
+      setError('حدث خطأ أثناء تحميل بياناتك المحفوظة.');
       localStorage.removeItem(POSTS_STORAGE_KEY);
-      localStorage.removeItem(AVATAR_STORAGE_KEY);
-      localStorage.removeItem(FOLLOWING_STORAGE_KEY);
+      if(user) {
+        localStorage.removeItem(`${AVATAR_STORAGE_KEY_PREFIX}${user.uid}`);
+        localStorage.removeItem(`${FOLLOWING_STORAGE_KEY_PREFIX}${user.uid}`);
+      }
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [user]);
 
-  // Save posts to localStorage whenever they change
   useEffect(() => {
-    if (!isLoading) {
+    if (!isLoading && posts.length > 0) {
       localStorage.setItem(POSTS_STORAGE_KEY, JSON.stringify(posts));
     }
   }, [posts, isLoading]);
   
-  // Save avatar to localStorage whenever it changes
   useEffect(() => {
-    if (!isLoading) {
-      localStorage.setItem(AVATAR_STORAGE_KEY, myAvatarUrl);
+    if (!isLoading && user) {
+      localStorage.setItem(`${AVATAR_STORAGE_KEY_PREFIX}${user.uid}`, myAvatarUrl);
     }
-  }, [myAvatarUrl, isLoading]);
+  }, [myAvatarUrl, isLoading, user]);
 
-  // Save following list to localStorage whenever it changes
   useEffect(() => {
-    if (!isLoading) {
-      localStorage.setItem(FOLLOWING_STORAGE_KEY, JSON.stringify(Array.from(following)));
+    if (!isLoading && user) {
+      localStorage.setItem(`${FOLLOWING_STORAGE_KEY_PREFIX}${user.uid}`, JSON.stringify(Array.from(following)));
     }
-  }, [following, isLoading]);
-
+  }, [following, isLoading, user]);
 
   const showToast = (message: string) => {
     setToastMessage(message);
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 3000);
+    setTimeout(() => setToastMessage(null), 3000);
   };
   
   const handleUpdateAvatar = (newImageUrl: string) => {
+    if (!user) return;
     setMyAvatarUrl(newImageUrl);
-    // Also update the avatar in all existing posts by the user
     setPosts(currentPosts => 
         currentPosts.map(post => 
-            post.userId === MY_USER_ID 
+            post.userId === user.uid 
             ? { ...post, avatarUrl: newImageUrl }
             : post
         )
@@ -129,10 +141,11 @@ const App: React.FC = () => {
   };
 
   const handleAddPost = (content: string, imageUrl: string | null) => {
+    if (!user) return;
     const newPost: Post = {
       id: Date.now().toString(),
-      userId: MY_USER_ID,
-      username: 'مستخدم جديد',
+      userId: user.uid,
+      username: user.displayName || user.email?.split('@')[0] || 'مستخدم',
       avatarUrl: myAvatarUrl,
       content,
       timestamp: new Date(),
@@ -147,59 +160,32 @@ const App: React.FC = () => {
   };
   
   const handleAddComment = (postId: string, commentText: string) => {
+    if (!user) return;
     setPosts(currentPosts => 
       currentPosts.map(post => {
         if (post.id === postId) {
           const newComment: Comment = {
             id: Date.now().toString(),
-            userId: MY_USER_ID,
-            username: 'مستخدم جديد',
+            userId: user.uid,
+            username: user.displayName || user.email?.split('@')[0] || 'مستخدم',
             text: commentText,
             timestamp: new Date(),
           };
-          return {
-            ...post,
-            comments: [...(post.comments || []), newComment]
-          }
+          return { ...post, comments: [...(post.comments || []), newComment] };
         }
         return post;
       })
     );
   };
 
-  const handleLikePost = (postId: string) => {
-    setPosts(currentPosts =>
-      currentPosts.map(post => {
-        if (post.id === postId) {
-          return {
-            ...post,
-            likes: (post.likes || 0) + 1,
-          };
-        }
-        return post;
-      }),
-    );
-  };
-
-  const handleSharePost = (postId: string) => {
-      setPosts(currentPosts =>
-          currentPosts.map(post => {
-              if (post.id === postId) {
-                  return {
-                      ...post,
-                      shares: (post.shares || 0) + 1,
-                  };
-              }
-              return post;
-          }),
-      );
-  };
+  const handleLikePost = (postId: string) => setPosts(currentPosts => currentPosts.map(p => p.id === postId ? { ...p, likes: (p.likes || 0) + 1 } : p));
+  const handleSharePost = (postId: string) => setPosts(currentPosts => currentPosts.map(p => p.id === postId ? { ...p, shares: (p.shares || 0) + 1 } : p));
 
   const handleToggleFollow = (userIdToToggle: string) => {
     setFollowing(currentFollowing => {
       const newFollowing = new Set(currentFollowing);
-      const user = posts.find(p => p.userId === userIdToToggle);
-      const username = user ? user.username : 'المستخدم';
+      const userToFollow = posts.find(p => p.userId === userIdToToggle);
+      const username = userToFollow ? userToFollow.username : 'المستخدم';
 
       if (newFollowing.has(userIdToToggle)) {
         newFollowing.delete(userIdToToggle);
@@ -218,40 +204,58 @@ const App: React.FC = () => {
   };
   
   const handleGoToMyProfile = () => {
-    handleSelectUser(MY_USER_ID);
+    if (!user) return;
+    handleSelectUser(user.uid);
   };
 
   const handleGoHome = () => {
     setCurrentView('home');
     setSelectedUserId(null);
-    setSearchQuery(''); // Also reset search on go home
+    setSearchQuery('');
   };
 
-  // New search handler
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-
     if (!query.trim()) {
       setCurrentView('home');
       return;
     }
-
     const lowercasedQuery = query.toLowerCase();
-    const results = posts.filter(post => 
-      post.content.toLowerCase().includes(lowercasedQuery) ||
-      post.username.toLowerCase().includes(lowercasedQuery)
-    );
-    
+    const results = posts.filter(p => p.content.toLowerCase().includes(lowercasedQuery) || p.username.toLowerCase().includes(lowercasedQuery));
     setSearchResults(results);
     setCurrentView('search');
   };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      setPosts([]);
+      setFollowing(new Set());
+      setMyAvatarUrl('');
+      setCurrentView('home');
+      showToast("تم تسجيل الخروج بنجاح.");
+    } catch (error) {
+      console.error("Error signing out: ", error);
+      showToast("حدث خطأ أثناء تسجيل الخروج.");
+    }
+  };
+
+  if (isAuthLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><LoadingSpinner /></div>;
+  }
+  
+  if (!user) {
+    return <AuthPage />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 font-sans">
       <Header 
         onGoHome={handleGoHome}
         onGoToProfile={handleGoToMyProfile} 
+        searchQuery={searchQuery}
         onSearch={handleSearch}
+        onLogout={handleLogout}
       />
       <main className="container mx-auto max-w-2xl px-4 py-8 pb-24">
         {isLoading && <LoadingSpinner />}
@@ -261,48 +265,20 @@ const App: React.FC = () => {
           <>
             <CreatePostWidget onAddPost={handleAddPost} myAvatarUrl={myAvatarUrl} onShowToast={showToast} />
             <div className="space-y-6">
-              {posts.length > 0 ? (
-                posts.map((post) => (
-                  <PostCard 
-                    key={post.id} 
-                    post={post} 
-                    onSelectUser={handleSelectUser}
-                    onAddComment={handleAddComment}
-                    onShowToast={showToast}
-                    onLikePost={handleLikePost}
-                    onSharePost={handleSharePost}
-                    myAvatarUrl={myAvatarUrl}
-                  />
-                ))
-              ) : (
-                <div className="text-center text-gray-500 py-10">
-                  <h2 className="text-2xl font-bold">لا توجد منشورات بعد</h2>
-                  <p className="mt-2">كن أول من ينشر شيئًا!</p>
-                </div>
-              )}
+              {posts.map((post) => (
+                <PostCard key={post.id} post={post} myUserId={user.uid} onSelectUser={handleSelectUser} onAddComment={handleAddComment} onShowToast={showToast} onLikePost={handleLikePost} onSharePost={handleSharePost} myAvatarUrl={myAvatarUrl} />
+              ))}
             </div>
           </>
         )}
 
-        {/* New Search View */}
         {!isLoading && !error && currentView === 'search' && (
           <div>
-            <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">
-              نتائج البحث عن: <span className="text-blue-600">"{searchQuery}"</span>
-            </h2>
+            <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">نتائج البحث عن: <span className="text-blue-600">"{searchQuery}"</span></h2>
             <div className="space-y-6">
               {searchResults.length > 0 ? (
                 searchResults.map((post) => (
-                  <PostCard 
-                    key={post.id} 
-                    post={post} 
-                    onSelectUser={handleSelectUser}
-                    onAddComment={handleAddComment}
-                    onShowToast={showToast}
-                    onLikePost={handleLikePost}
-                    onSharePost={handleSharePost}
-                    myAvatarUrl={myAvatarUrl}
-                  />
+                  <PostCard key={post.id} post={post} myUserId={user.uid} onSelectUser={handleSelectUser} onAddComment={handleAddComment} onShowToast={showToast} onLikePost={handleLikePost} onSharePost={handleSharePost} myAvatarUrl={myAvatarUrl} />
                 ))
               ) : (
                 <div className="text-center text-gray-500 py-10 bg-gray-100 rounded-lg">
@@ -316,39 +292,12 @@ const App: React.FC = () => {
         )}
 
         {!isLoading && !error && currentView === 'profile' && selectedUserId && (
-          <ProfilePage 
-            userId={selectedUserId}
-            myUserId={MY_USER_ID}
-            posts={posts}
-            onSelectUser={handleSelectUser}
-            onBack={handleGoHome}
-            onAddComment={handleAddComment}
-            onShowToast={showToast}
-            onLikePost={handleLikePost}
-            onSharePost={handleSharePost}
-            following={following}
-            onToggleFollow={handleToggleFollow}
-            onAddPost={handleAddPost}
-            myAvatarUrl={myAvatarUrl}
-            onUpdateAvatar={handleUpdateAvatar}
-          />
+          <ProfilePage userId={selectedUserId} myUserId={user.uid} posts={posts} onSelectUser={handleSelectUser} onBack={handleGoHome} onAddComment={handleAddComment} onShowToast={showToast} onLikePost={handleLikePost} onSharePost={handleSharePost} following={following} onToggleFollow={handleToggleFollow} onAddPost={handleAddPost} myAvatarUrl={myAvatarUrl} onUpdateAvatar={handleUpdateAvatar} />
         )}
       </main>
 
-      {showPostForm && (
-        <PostForm
-          onAddPost={handleAddPost}
-          onClose={() => setShowPostForm(false)}
-          onShowToast={showToast}
-        />
-      )}
-
-      <BottomNavBar 
-        onGoHome={handleGoHome}
-        onGoToProfile={handleGoToMyProfile}
-        onNewPost={() => setShowPostForm(true)}
-      />
-
+      {showPostForm && <PostForm onAddPost={handleAddPost} onClose={() => setShowPostForm(false)} onShowToast={showToast} />}
+      <BottomNavBar onGoHome={handleGoHome} onGoToProfile={handleGoToMyProfile} onNewPost={() => setShowPostForm(true)} />
       <Toast message={toastMessage} />
     </div>
   );

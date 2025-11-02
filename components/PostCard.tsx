@@ -5,6 +5,7 @@ import CommentSection from './CommentSection';
 
 interface PostCardProps {
   post: Post;
+  myUserId: string;
   onSelectUser: (userId: string) => void;
   onAddComment: (postId: string, commentText: string) => void;
   onShowToast: (message: string) => void;
@@ -13,7 +14,7 @@ interface PostCardProps {
   myAvatarUrl: string;
 }
 
-const PostCard: React.FC<PostCardProps> = ({ post, onSelectUser, onAddComment, onShowToast, onLikePost, onSharePost, myAvatarUrl }) => {
+const PostCard: React.FC<PostCardProps> = ({ post, myUserId, onSelectUser, onAddComment, onShowToast, onLikePost, onSharePost, myAvatarUrl }) => {
   const [showComments, setShowComments] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
 
@@ -134,6 +135,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onSelectUser, onAddComment, o
         <CommentSection 
             comments={post.comments || []}
             onAddComment={handleAddComment}
+            myUserId={myUserId}
             myAvatarUrl={myAvatarUrl}
         />
       )}

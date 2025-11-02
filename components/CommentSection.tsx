@@ -5,10 +5,11 @@ import { PaperAirplaneIcon } from './Icons';
 interface CommentSectionProps {
     comments: Comment[];
     onAddComment: (commentText: string) => void;
+    myUserId: string;
     myAvatarUrl: string;
 }
 
-const CommentSection: React.FC<CommentSectionProps> = ({ comments, onAddComment, myAvatarUrl }) => {
+const CommentSection: React.FC<CommentSectionProps> = ({ comments, onAddComment, myUserId, myAvatarUrl }) => {
     const [newComment, setNewComment] = useState('');
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -64,7 +65,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ comments, onAddComment,
             <div className="space-y-4">
                 {comments.length > 0 ? comments.map(comment => (
                     <div key={comment.id} className="flex items-start space-x-3 space-x-reverse">
-                         <img src={comment.userId === 'new-user' ? myAvatarUrl : `https://picsum.photos/seed/${comment.userId}/48`} alt={comment.username} className="w-9 h-9 rounded-full object-cover" />
+                         <img src={comment.userId === myUserId ? myAvatarUrl : `https://picsum.photos/seed/${comment.userId}/48`} alt={comment.username} className="w-9 h-9 rounded-full object-cover" />
                          <div className="flex-1 bg-gray-100 rounded-xl p-3">
                              <div className="flex items-baseline space-x-2 space-x-reverse">
                                 <span className="font-bold text-sm">{comment.username}</span>
