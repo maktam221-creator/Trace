@@ -5,8 +5,10 @@ import Header from './components/Header';
 import PostCard from './components/PostCard';
 import PostForm from './components/PostForm';
 import LoadingSpinner from './components/LoadingSpinner';
-import { PlusIcon } from './components/Icons';
+import BottomNavBar from './components/BottomNavBar';
 import ProfilePage from './components/ProfilePage';
+
+const MY_USER_ID = 'new-user';
 
 const App: React.FC = () => {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -43,7 +45,7 @@ const App: React.FC = () => {
   const handleAddPost = (content: string) => {
     const newPost: Post = {
       id: Date.now().toString(),
-      userId: 'new-user',
+      userId: MY_USER_ID,
       username: 'مستخدم جديد',
       avatarUrl: `https://picsum.photos/seed/${Date.now()}/48`,
       content,
@@ -57,6 +59,10 @@ const App: React.FC = () => {
     setSelectedUserId(userId);
     setCurrentView('profile');
   };
+  
+  const handleGoToMyProfile = () => {
+    handleSelectUser(MY_USER_ID);
+  };
 
   const handleGoHome = () => {
     setCurrentView('home');
@@ -66,7 +72,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 font-sans">
       <Header onNewPost={() => setShowPostForm(true)} onGoHome={handleGoHome} />
-      <main className="container mx-auto max-w-2xl px-4 py-8">
+      <main className="container mx-auto max-w-2xl px-4 py-8 pb-24">
         {isLoading && <LoadingSpinner />}
         {error && <div className="text-center text-red-500 bg-red-100 p-4 rounded-lg">{error}</div>}
         
@@ -100,14 +106,11 @@ const App: React.FC = () => {
         />
       )}
 
-      {/* Floating Action Button for Mobile */}
-      <button
-        onClick={() => setShowPostForm(true)}
-        className="fixed bottom-6 left-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-transform transform hover:scale-105 sm:hidden"
-        aria-label="منشور جديد"
-      >
-        <PlusIcon className="w-6 h-6" />
-      </button>
+      <BottomNavBar 
+        onGoHome={handleGoHome}
+        onGoToProfile={handleGoToMyProfile}
+        onNewPost={() => setShowPostForm(true)}
+      />
     </div>
   );
 };

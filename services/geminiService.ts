@@ -6,7 +6,8 @@ const fallbackPosts: Omit<import('../types').Post, 'id' | 'timestamp'>[] = [
     { userId: "nature-explorer", username: "مستكشف الطبيعة", avatarUrl: "https://picsum.photos/seed/nature/48", content: "لا يوجد واي فاي في الغابة، لكنك ستجد اتصالًا أفضل. قضيت اليوم في أحضان الطبيعة، شعور لا يوصف بالسلام. 🌲 #طبيعة #هدوء" },
     { userId: "tech-expert", username: "خبير تقني", avatarUrl: "https://picsum.photos/seed/tech/48", content: "الذكاء الاصطناعي يتطور بسرعة مذهلة! ما هو أكثر تطبيق للذكاء الاصطناعي أثار إعجابكم مؤخرًا؟ شاركوني آرائكم. #تقنية #مستقبل" },
     { userId: "coffee-lover", username: "ذواقة القهوة", avatarUrl: "https://picsum.photos/seed/coffee/48", content: "رائحة القهوة في الصباح هي بداية مثالية ليوم مليء بالإنجازات. كيف تفضلون قهوتكم؟ ☕ #قهوة #صباح_الخير" },
-    { userId: "travel-enthusiast", username: "عاشق السفر", avatarUrl: "https://picsum.photos/seed/travel/48", content: "السفر يفتح العقل ويجدد الروح. التخطيط للوجهة القادمة... هل لديكم أي اقتراحات؟ ✈️ #سفر #مغامرة" }
+    { userId: "travel-enthusiast", username: "عاشق السفر", avatarUrl: "https://picsum.photos/seed/travel/48", content: "السفر يفتح العقل ويجدد الروح. التخطيط للوجهة القادمة... هل لديكم أي اقتراحات؟ ✈️ #سفر #مغامرة" },
+    { userId: "new-user", username: "مستخدم جديد", avatarUrl: "https://picsum.photos/seed/new-user/48", content: "مرحباً بالعالم! هذا هو أول منشور لي هنا. متحمس للتواصل معكم جميعاً." }
 ];
 
 
@@ -57,6 +58,13 @@ export async function generateSamplePosts(): Promise<Omit<import('../types').Pos
 
     const jsonText = response.text.trim();
     const posts = JSON.parse(jsonText);
+    
+    // Ensure the new-user is always present for profile view consistency
+    const userExists = posts.some(p => p.userId === 'new-user');
+    if (!userExists) {
+        posts.push({ userId: "new-user", username: "مستخدم جديد", avatarUrl: "https://picsum.photos/seed/new-user/48", content: "مرحباً بالعالم! هذا هو أول منشور لي هنا. متحمس للتواصل معكم جميعاً." });
+    }
+    
     return posts;
 
   } catch (error) {
