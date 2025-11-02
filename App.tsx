@@ -14,7 +14,7 @@ import CreatePostWidget from './components/CreatePostWidget';
 import { SearchIcon } from './components/Icons';
 import AuthPage from './components/AuthPage';
 import { auth } from './firebase';
-import { onAuthStateChanged, User, signOut, updateProfile } from 'firebase/auth';
+import { onAuthStateChanged, User, signOut, updateProfile, deleteUser } from 'firebase/auth';
 import UserCard from './components/UserCard';
 import FollowSuggestions from './components/FollowSuggestions';
 
@@ -118,8 +118,21 @@ const App: React.FC = () => {
       };
     }
 
-    // [REMOVED] The following block was removed to prevent re-creating profiles for fake users from any remaining fake posts.
-    // The source of truth for users is now the profiles list, which is populated only by authenticated users.
+    // Re-populate profiles from loaded posts to ensure all posting users are discoverable.
+    // This is safe because posts from non-authenticated users have already been filtered out.
+    loadedPosts.forEach(post => {
+      if (!loadedProfiles[post.userId]) {
+        loadedProfiles[post.userId] = {
+          username: post.username,
+          avatarUrl: post.avatarUrl || `https://picsum.photos/seed/${post.userId}/48`,
+          gender: post.gender || '',
+          qualification: post.qualification || '',
+          country: post.country || '',
+          followers: [],
+          following: [],
+        };
+      }
+    });
 
     const storedAvatar = localStorage.getItem(AVATAR_STORAGE_KEY);
     setMyAvatarUrl(storedAvatar || loadedProfiles[user.uid]?.avatarUrl || `https://picsum.photos/seed/${user.uid}/48`);
@@ -377,9 +390,9 @@ const App: React.FC = () => {
 
     if (!lowercasedQuery) {
       // If query is empty, show all users
-      const allUsers = (Object.entries(profiles) as [string, Profile][])
-        // FIX: Added `typeof profile === 'object'` to ensure `profile` is a non-null object before spreading.
-        // This prevents runtime errors from invalid data in localStorage and fixes the TypeScript error.
+      // FIX: Filter out invalid profile entries that might come from corrupted localStorage data.
+      // This prevents runtime errors from trying to spread a non-object value (e.g., null).
+      const allUsers = Object.entries(profiles)
         .filter(([, profile]) => profile && typeof profile === 'object' && typeof profile.username === 'string')
         .map(([userId, profile]) => ({...profile, id: userId}));
       setSearchUserResults(allUsers);
@@ -389,9 +402,9 @@ const App: React.FC = () => {
       const postResults = posts.filter(p => p.content.toLowerCase().includes(lowercasedQuery) || p.username.toLowerCase().includes(lowercasedQuery));
       setSearchPostResults(postResults);
 
-      const userResults = (Object.entries(profiles) as [string, Profile][])
-          // FIX: Added `typeof profile === 'object'` to ensure `profile` is a non-null object before spreading.
-          // This prevents runtime errors from invalid data in localStorage and fixes the TypeScript error.
+      // FIX: Filter out invalid profile entries that might come from corrupted localStorage data.
+      // This prevents runtime errors from trying to spread a non-object value (e.g., null).
+      const userResults = Object.entries(profiles)
           .filter(([, profile]) => profile && typeof profile === 'object' && typeof profile.username === 'string' && profile.username.toLowerCase().includes(lowercasedQuery))
           .map(([userId, profile]) => ({...profile, id: userId}));
       setSearchUserResults(userResults);
@@ -405,6 +418,59 @@ const App: React.FC = () => {
     } catch (error) {
       console.error("Error signing out: ", error);
       showToast("حدث خطأ أثناء تسجيل الخروج.");
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+    const userToDelete = auth.currentUser;
+    if (!userToDelete) {
+      showToast("لا يمكن إتمام العملية. يرجى تسجيل الدخول مرة أخرى.");
+      await signOut(auth);
+      return;
+    }
+  
+    const userId = userToDelete.uid;
+  
+    setPosts(currentPosts => {
+      const postsWithoutUser = currentPosts.filter(p => p.userId !== userId);
+      return postsWithoutUser.map(post => ({
+        ...post,
+        comments: (post.comments || []).filter(c => c.userId !== userId)
+      }));
+    });
+  
+    setProfiles(currentProfiles => {
+      const newProfiles = { ...currentProfiles };
+      delete newProfiles[userId];
+  
+      Object.keys(newProfiles).forEach(profileId => {
+        const profile = newProfiles[profileId];
+        if (profile.followers) {
+          profile.followers = profile.followers.filter(id => id !== userId);
+        }
+        if (profile.following) {
+          profile.following = profile.following.filter(id => id !== userId);
+        }
+        newProfiles[profileId] = profile;
+      });
+  
+      return newProfiles;
+    });
+
+    localStorage.removeItem(`${AVATAR_STORAGE_KEY_PREFIX}${userId}`);
+  
+    try {
+      await deleteUser(userToDelete);
+      showToast("تم حذف حسابك بنجاح.");
+    } catch (error: any) {
+      console.error("Error deleting user from Firebase:", error);
+      await signOut(auth);
+      if (error.code === 'auth/requires-recent-login') {
+        showToast("تم حذف بياناتك من التطبيق. لحذف الحساب نهائياً، أعد تسجيل الدخول ثم حاول مرة أخرى.");
+      } else {
+        showToast("تم تسجيل خروجك. حدث خطأ أثناء الحذف النهائي للحساب.");
+      }
     }
   };
 
@@ -521,12 +587,16 @@ const App: React.FC = () => {
         })()}
 
         {!isLoading && !error && currentView === 'profile' && selectedUserId && (
-          <ProfilePage userId={selectedUserId} myUserId={user.uid} myDisplayName={user.displayName || ''} posts={posts} userProfile={profiles[selectedUserId]} onSelectUser={handleSelectUser} onBack={handleGoHome} onAddComment={handleAddComment} onShowToast={showToast} onLikePost={handleLikePost} onSharePost={handleSharePost} following={followingSet} onToggleFollow={handleToggleFollow} onAddPost={handleAddPost} myAvatarUrl={myAvatarUrl} onUpdateAvatar={handleUpdateAvatar} onUpdateProfile={handleUpdateProfile} />
+          <ProfilePage userId={selectedUserId} myUserId={user.uid} myDisplayName={user.displayName || ''} posts={posts} userProfile={profiles[selectedUserId]} onSelectUser={handleSelectUser} onBack={handleGoHome} onAddComment={handleAddComment} onShowToast={showToast} onLikePost={handleLikePost} onSharePost={handleSharePost} following={followingSet} onToggleFollow={handleToggleFollow} onAddPost={handleAddPost} myAvatarUrl={myAvatarUrl} onUpdateAvatar={handleUpdateAvatar} onUpdateProfile={handleUpdateProfile} onDeleteAccount={handleDeleteAccount} />
         )}
       </main>
-
+      
+      {!isLoading && !error && (
+        <BottomNavBar onGoHome={handleGoHome} onNewPost={() => setShowPostForm(true)} onGoToProfile={handleGoToMyProfile} />
+      )}
+      
       {showPostForm && <PostForm onAddPost={handleAddPost} onClose={() => setShowPostForm(false)} onShowToast={showToast} />}
-      <BottomNavBar onGoHome={handleGoHome} onGoToProfile={handleGoToMyProfile} onNewPost={() => setShowPostForm(true)} />
+
       <Toast message={toastMessage} />
     </div>
   );

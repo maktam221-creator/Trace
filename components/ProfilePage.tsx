@@ -1,10 +1,12 @@
 
+
 import React, { useRef, useState, useEffect } from 'react';
 import { Post, EditableProfileData, Profile } from '../types';
 import PostCard from './PostCard';
 import { ArrowRightIcon, CameraIcon, PencilIcon, AcademicCapIcon, GlobeAltIcon, IdentificationIcon } from './Icons';
 import CreatePostWidget from './CreatePostWidget';
 import { uploadImage } from '../services/imageService';
+import DeleteConfirmationModal from './DeleteConfirmationModal';
 
 interface ProfilePageProps {
   userId: string;
@@ -24,6 +26,7 @@ interface ProfilePageProps {
   myAvatarUrl: string;
   onUpdateAvatar: (newImageUrl: string) => void;
   onUpdateProfile: (profileData: EditableProfileData) => Promise<void>;
+  onDeleteAccount: () => Promise<void>;
 }
 
 const ProfilePage: React.FC<ProfilePageProps> = ({ 
@@ -43,7 +46,8 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
     onAddPost,
     myAvatarUrl,
     onUpdateAvatar,
-    onUpdateProfile
+    onUpdateProfile,
+    onDeleteAccount
 }) => {
   const userPosts = posts.filter(p => p.userId === userId).sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
   const isMyProfile = userId === myUserId;
@@ -54,6 +58,9 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   let userToDisplay: Profile | undefined = userProfile;
   if (!userToDisplay && userPosts.length > 0) {
       const p = userPosts[0];
@@ -129,6 +136,19 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
     setIsEditing(false);
     if (userToDisplay) {
         setNewUsername(userToDisplay.username);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    setIsDeleting(true);
+    try {
+      await onDeleteAccount();
+      // No need to close modal or set loading, as the component will unmount on logout.
+    } catch (error) {
+      console.error("Failed to delete account:", error);
+      onShowToast("حدث خطأ أثناء حذف الحساب.");
+      setIsDeleting(false);
+      setIsDeleteModalOpen(false);
     }
   };
 
@@ -306,22 +326,33 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
                     </div>
                 )}
                 {isMyProfile && isEditing && (
-                    <div className="mt-4 flex gap-4 justify-center">
-                        <button
-                            onClick={handleCancelEdit}
-                            disabled={isSaving}
-                            className="font-semibold px-8 py-2 rounded-full transition-colors bg-white text-gray-700 border border-gray-300 hover:bg-gray-100 disabled:opacity-50"
-                        >
-                            إلغاء
-                        </button>
-                        <button
-                            onClick={handleSaveProfile}
-                            disabled={isSaving || !newUsername.trim() || !hasChanges}
-                            className="font-semibold px-8 py-2 rounded-full transition-colors bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed w-32"
-                        >
-                            {isSaving ? 'جاري الحفظ...' : 'حفظ'}
-                        </button>
-                    </div>
+                    <>
+                        <div className="mt-4 flex gap-4 justify-center">
+                            <button
+                                onClick={handleCancelEdit}
+                                disabled={isSaving}
+                                className="font-semibold px-8 py-2 rounded-full transition-colors bg-white text-gray-700 border border-gray-300 hover:bg-gray-100 disabled:opacity-50"
+                            >
+                                إلغاء
+                            </button>
+                            <button
+                                onClick={handleSaveProfile}
+                                disabled={isSaving || !newUsername.trim() || !hasChanges}
+                                className="font-semibold px-8 py-2 rounded-full transition-colors bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed w-32"
+                            >
+                                {isSaving ? 'جاري الحفظ...' : 'حفظ'}
+                            </button>
+                        </div>
+                        <div className="mt-6 border-t pt-4 text-center">
+                            <button
+                                onClick={() => setIsDeleteModalOpen(true)}
+                                disabled={isSaving}
+                                className="font-semibold text-sm text-red-600 hover:text-red-800 hover:bg-red-50 py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                حذف الحساب نهائياً
+                            </button>
+                        </div>
+                    </>
                 )}
             </div>
         </div>
@@ -350,6 +381,13 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
                 </div>
             )}
         </div>
+
+        <DeleteConfirmationModal
+            isOpen={isDeleteModalOpen}
+            onClose={() => setIsDeleteModalOpen(false)}
+            onConfirm={handleDeleteConfirm}
+            isLoading={isDeleting}
+        />
     </div>
   );
 };
