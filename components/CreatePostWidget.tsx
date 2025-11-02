@@ -1,19 +1,24 @@
 import React, { useState, useRef } from 'react';
 import { PhotoIcon, XCircleIcon } from './Icons';
+import { uploadImage } from '../services/imageService';
 
 interface CreatePostWidgetProps {
   onAddPost: (content: string, imageUrl: string | null) => void;
   myAvatarUrl: string;
+  onShowToast: (message: string) => void;
 }
 
-const CreatePostWidget: React.FC<CreatePostWidgetProps> = ({ onAddPost, myAvatarUrl }) => {
+const CreatePostWidget: React.FC<CreatePostWidgetProps> = ({ onAddPost, myAvatarUrl, onShowToast }) => {
   const [content, setContent] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setImageFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result as string);
@@ -23,21 +28,40 @@ const CreatePostWidget: React.FC<CreatePostWidgetProps> = ({ onAddPost, myAvatar
   };
 
   const handleRemoveImage = () => {
+    setImageFile(null);
     setImagePreview(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (content.trim() || imagePreview) {
-      onAddPost(content.trim(), imagePreview);
-      setContent('');
-      setImagePreview(null);
-      if (fileInputRef.current) {
-          fileInputRef.current.value = "";
-      }
+    if (!content.trim() && !imageFile) {
+        return;
+    }
+    
+    setIsUploading(true);
+    let uploadedImageUrl: string | null = null;
+    
+    try {
+        if (imageFile) {
+            uploadedImageUrl = await uploadImage(imageFile);
+        }
+        onAddPost(content.trim(), uploadedImageUrl);
+
+        // Reset form on success
+        setContent('');
+        setImageFile(null);
+        setImagePreview(null);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
+    } catch (error) {
+        console.error("Image upload failed:", error);
+        onShowToast('فشل رفع الصورة. الرجاء المحاولة مرة أخرى.');
+    } finally {
+        setIsUploading(false);
     }
   };
 
@@ -82,6 +106,7 @@ const CreatePostWidget: React.FC<CreatePostWidgetProps> = ({ onAddPost, myAvatar
             type="button"
             onClick={() => fileInputRef.current?.click()}
             className="flex items-center space-x-2 space-x-reverse p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            disabled={isUploading}
           >
             <PhotoIcon className="w-6 h-6" />
             <span className="font-semibold">إضافة صورة</span>
@@ -96,10 +121,10 @@ const CreatePostWidget: React.FC<CreatePostWidgetProps> = ({ onAddPost, myAvatar
 
           <button
             type="submit"
-            disabled={!content.trim() && !imagePreview}
-            className="px-8 py-2 bg-blue-600 text-white font-semibold rounded-full hover:bg-blue-700 transition-colors disabled:bg-blue-300 disabled:cursor-not-allowed"
+            disabled={(!content.trim() && !imagePreview) || isUploading}
+            className="px-8 py-2 bg-blue-600 text-white font-semibold rounded-full hover:bg-blue-700 transition-colors disabled:bg-blue-300 disabled:cursor-not-allowed w-28 text-center"
           >
-            نشر
+            {isUploading ? 'جاري النشر...' : 'نشر'}
           </button>
         </div>
       </form>

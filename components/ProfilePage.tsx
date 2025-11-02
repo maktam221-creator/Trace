@@ -1,8 +1,9 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Post } from '../types';
 import PostCard from './PostCard';
 import { ArrowRightIcon, CameraIcon } from './Icons';
 import CreatePostWidget from './CreatePostWidget';
+import { uploadImage } from '../services/imageService';
 
 interface ProfilePageProps {
   userId: string;
@@ -42,6 +43,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
   const isMyProfile = userId === myUserId;
   const isFollowing = following.has(userId);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   // Special handling for my own profile to ensure it always renders, even without posts
   if (isMyProfile && !user) {
@@ -52,14 +54,22 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
     }
   }
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            onUpdateAvatar(reader.result as string);
-        };
-        reader.readAsDataURL(file);
+        setIsUploadingAvatar(true);
+        try {
+            const newImageUrl = await uploadImage(file);
+            onUpdateAvatar(newImageUrl);
+        } catch(error) {
+            onShowToast('فشل تحديث الصورة. الرجاء المحاولة مرة أخرى.');
+        } finally {
+            setIsUploadingAvatar(false);
+            // Reset file input
+            if (fileInputRef.current) {
+                fileInputRef.current.value = "";
+            }
+        }
     }
   };
 
@@ -90,7 +100,12 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
                     alt={user.username}
                     className="w-full h-full rounded-full object-cover border-4 border-white shadow-md"
                 />
-                {isMyProfile && (
+                {isUploadingAvatar && (
+                    <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                    </div>
+                )}
+                {isMyProfile && !isUploadingAvatar && (
                     <>
                          <input 
                             type="file" 
@@ -126,7 +141,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
             )}
         </div>
 
-        {isMyProfile && <CreatePostWidget onAddPost={onAddPost} myAvatarUrl={myAvatarUrl} />}
+        {isMyProfile && <CreatePostWidget onAddPost={onAddPost} myAvatarUrl={myAvatarUrl} onShowToast={onShowToast} />}
 
         <h3 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">المنشورات</h3>
         <div className="space-y-6">

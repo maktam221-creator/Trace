@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Post, Comment } from './types';
 import { generateSamplePosts } from './services/geminiService';
 import Header from './components/Header';
@@ -9,43 +9,104 @@ import BottomNavBar from './components/BottomNavBar';
 import ProfilePage from './components/ProfilePage';
 import Toast from './components/Toast';
 import CreatePostWidget from './components/CreatePostWidget';
+import { SearchIcon } from './components/Icons';
 
 const MY_USER_ID = 'new-user';
+const POSTS_STORAGE_KEY = 'aegypt_posts';
+const AVATAR_STORAGE_KEY = 'aegypt_avatar';
+const FOLLOWING_STORAGE_KEY = 'aegypt_following';
 
 const App: React.FC = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showPostForm, setShowPostForm] = useState(false);
-  const [currentView, setCurrentView] = useState<'home' | 'profile'>('home');
+  const [currentView, setCurrentView] = useState<'home' | 'profile' | 'search'>('home');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [following, setFollowing] = useState<Set<string>>(new Set());
   const [myAvatarUrl, setMyAvatarUrl] = useState(`https://picsum.photos/seed/${MY_USER_ID}/48`);
 
-  const loadInitialPosts = useCallback(async () => {
+  // Search state
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [searchResults, setSearchResults] = useState<Post[]>([]);
+
+
+  // Load data from localStorage on initial render, or generate if it doesn't exist
+  useEffect(() => {
     try {
-      setIsLoading(true);
-      setError(null);
-      const samplePosts = await generateSamplePosts();
-      const postsWithTimestamps = samplePosts.map((post, index) => ({
-        ...post,
-        id: `${Date.now()}-${index}`,
-        timestamp: new Date(Date.now() - index * 60000 * 5), // Stagger timestamps
-      }));
-      setPosts(postsWithTimestamps);
+      const storedPosts = localStorage.getItem(POSTS_STORAGE_KEY);
+      const storedAvatar = localStorage.getItem(AVATAR_STORAGE_KEY);
+      const storedFollowing = localStorage.getItem(FOLLOWING_STORAGE_KEY);
+
+      const loadGeneratedPosts = async () => {
+        try {
+          const samplePosts = await generateSamplePosts();
+          const postsWithTimestamps = samplePosts.map((post, index) => ({
+            ...post,
+            id: `${Date.now()}-${index}`,
+            timestamp: new Date(Date.now() - index * 60000 * 5),
+          }));
+          setPosts(postsWithTimestamps);
+        } catch (err) {
+          console.error('Failed to generate sample posts:', err);
+          setError('حدث خطأ أثناء تحميل المنشورات. الرجاء المحاولة مرة أخرى.');
+        }
+      };
+      
+      if (storedPosts) {
+        const parsedPosts = JSON.parse(storedPosts).map((post: any) => ({
+          ...post,
+          timestamp: new Date(post.timestamp),
+          comments: (post.comments || []).map((comment: any) => ({
+            ...comment,
+            timestamp: new Date(comment.timestamp),
+          })),
+        }));
+        setPosts(parsedPosts);
+      } else {
+        loadGeneratedPosts();
+      }
+
+      if (storedAvatar) {
+        setMyAvatarUrl(storedAvatar);
+      }
+      
+      if (storedFollowing) {
+        setFollowing(new Set(JSON.parse(storedFollowing)));
+      }
     } catch (err) {
-      console.error('Failed to generate sample posts:', err);
-      setError('حدث خطأ أثناء تحميل المنشورات. الرجاء المحاولة مرة أخرى.');
+      console.error('Failed to load data from localStorage:', err);
+      setError('حدث خطأ أثناء تحميل بياناتك المحفوظة. سنقوم بإعادة تعيين البيانات.');
+      localStorage.removeItem(POSTS_STORAGE_KEY);
+      localStorage.removeItem(AVATAR_STORAGE_KEY);
+      localStorage.removeItem(FOLLOWING_STORAGE_KEY);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
+  // Save posts to localStorage whenever they change
   useEffect(() => {
-    loadInitialPosts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (!isLoading) {
+      localStorage.setItem(POSTS_STORAGE_KEY, JSON.stringify(posts));
+    }
+  }, [posts, isLoading]);
+  
+  // Save avatar to localStorage whenever it changes
+  useEffect(() => {
+    if (!isLoading) {
+      localStorage.setItem(AVATAR_STORAGE_KEY, myAvatarUrl);
+    }
+  }, [myAvatarUrl, isLoading]);
+
+  // Save following list to localStorage whenever it changes
+  useEffect(() => {
+    if (!isLoading) {
+      localStorage.setItem(FOLLOWING_STORAGE_KEY, JSON.stringify(Array.from(following)));
+    }
+  }, [following, isLoading]);
+
 
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -82,6 +143,7 @@ const App: React.FC = () => {
     };
     setPosts([newPost, ...posts]);
     setShowPostForm(false);
+    showToast('تم نشر منشورك بنجاح!');
   };
   
   const handleAddComment = (postId: string, commentText: string) => {
@@ -162,6 +224,26 @@ const App: React.FC = () => {
   const handleGoHome = () => {
     setCurrentView('home');
     setSelectedUserId(null);
+    setSearchQuery(''); // Also reset search on go home
+  };
+
+  // New search handler
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+
+    if (!query.trim()) {
+      setCurrentView('home');
+      return;
+    }
+
+    const lowercasedQuery = query.toLowerCase();
+    const results = posts.filter(post => 
+      post.content.toLowerCase().includes(lowercasedQuery) ||
+      post.username.toLowerCase().includes(lowercasedQuery)
+    );
+    
+    setSearchResults(results);
+    setCurrentView('search');
   };
 
   return (
@@ -169,6 +251,7 @@ const App: React.FC = () => {
       <Header 
         onGoHome={handleGoHome}
         onGoToProfile={handleGoToMyProfile} 
+        onSearch={handleSearch}
       />
       <main className="container mx-auto max-w-2xl px-4 py-8 pb-24">
         {isLoading && <LoadingSpinner />}
@@ -176,7 +259,7 @@ const App: React.FC = () => {
         
         {!isLoading && !error && currentView === 'home' && (
           <>
-            <CreatePostWidget onAddPost={handleAddPost} myAvatarUrl={myAvatarUrl} />
+            <CreatePostWidget onAddPost={handleAddPost} myAvatarUrl={myAvatarUrl} onShowToast={showToast} />
             <div className="space-y-6">
               {posts.length > 0 ? (
                 posts.map((post) => (
@@ -199,6 +282,37 @@ const App: React.FC = () => {
               )}
             </div>
           </>
+        )}
+
+        {/* New Search View */}
+        {!isLoading && !error && currentView === 'search' && (
+          <div>
+            <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">
+              نتائج البحث عن: <span className="text-blue-600">"{searchQuery}"</span>
+            </h2>
+            <div className="space-y-6">
+              {searchResults.length > 0 ? (
+                searchResults.map((post) => (
+                  <PostCard 
+                    key={post.id} 
+                    post={post} 
+                    onSelectUser={handleSelectUser}
+                    onAddComment={handleAddComment}
+                    onShowToast={showToast}
+                    onLikePost={handleLikePost}
+                    onSharePost={handleSharePost}
+                    myAvatarUrl={myAvatarUrl}
+                  />
+                ))
+              ) : (
+                <div className="text-center text-gray-500 py-10 bg-gray-100 rounded-lg">
+                  <SearchIcon className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+                  <h3 className="text-xl font-bold">لم يتم العثور على نتائج</h3>
+                  <p className="mt-2">جرّب البحث عن كلمة أخرى.</p>
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
         {!isLoading && !error && currentView === 'profile' && selectedUserId && (
@@ -225,6 +339,7 @@ const App: React.FC = () => {
         <PostForm
           onAddPost={handleAddPost}
           onClose={() => setShowPostForm(false)}
+          onShowToast={showToast}
         />
       )}
 
