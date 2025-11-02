@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { Post, Comment, Profile, EditableProfileData } from './types';
 import { generateSamplePosts } from './services/geminiService';
@@ -138,12 +139,9 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (user && !isLoading && !hasCheckedSuggestions) {
-        const creationTime = new Date(user.metadata.creationTime || 0).getTime();
-        const lastSignInTime = new Date(user.metadata.lastSignInTime || 0).getTime();
-        const timeDifference = Math.abs(lastSignInTime - creationTime);
+        const isNewUser = localStorage.getItem('aegypt_is_new_user') === 'true';
 
         const myProfile = profiles[user.uid];
-        const isNewUser = timeDifference < 5000; // Heuristic: first login is within 5s of creation
         const hasNotFollowedAnyone = !myProfile || !myProfile.following || myProfile.following.length === 0;
 
         if (isNewUser && hasNotFollowedAnyone) {
@@ -151,6 +149,8 @@ const App: React.FC = () => {
             if (otherUsersExist) {
                 setShowFollowSuggestions(true);
             }
+            // Clean up the flag so it doesn't show again
+            localStorage.removeItem('aegypt_is_new_user');
         }
         setHasCheckedSuggestions(true); // Mark as checked for this session
     }
@@ -377,12 +377,10 @@ const App: React.FC = () => {
 
     if (!lowercasedQuery) {
       // If query is empty, show all users
-      // FIX: Added a filter to ensure profile is a valid object before spreading.
-      // This prevents runtime errors if localStorage contains invalid profile data (e.g., null, undefined, or primitives).
       const allUsers = (Object.entries(profiles) as [string, Profile][])
-        // FIX: Replaced `typeof profile === 'object'` with a check for `profile.username`
-        // to provide a better type guard and fix the spread operator error in the `.map()` call.
-        .filter(([, profile]) => profile && typeof profile.username === 'string')
+        // FIX: Added `typeof profile === 'object'` to ensure `profile` is a non-null object before spreading.
+        // This prevents runtime errors from invalid data in localStorage and fixes the TypeScript error.
+        .filter(([, profile]) => profile && typeof profile === 'object' && typeof profile.username === 'string')
         .map(([userId, profile]) => ({...profile, id: userId}));
       setSearchUserResults(allUsers);
       setSearchPostResults([]);
@@ -391,11 +389,10 @@ const App: React.FC = () => {
       const postResults = posts.filter(p => p.content.toLowerCase().includes(lowercasedQuery) || p.username.toLowerCase().includes(lowercasedQuery));
       setSearchPostResults(postResults);
 
-      // FIX: Added a check to ensure `profile.username` exists and is a string before calling `toLowerCase()`.
-      // This prevents a potential runtime error and fixes the TypeScript error on the following `.map()` line,
-      // as it helps TypeScript correctly infer that `profile` is an object that can be spread.
       const userResults = (Object.entries(profiles) as [string, Profile][])
-          .filter(([, profile]) => profile && typeof profile.username === 'string' && profile.username.toLowerCase().includes(lowercasedQuery))
+          // FIX: Added `typeof profile === 'object'` to ensure `profile` is a non-null object before spreading.
+          // This prevents runtime errors from invalid data in localStorage and fixes the TypeScript error.
+          .filter(([, profile]) => profile && typeof profile === 'object' && typeof profile.username === 'string' && profile.username.toLowerCase().includes(lowercasedQuery))
           .map(([userId, profile]) => ({...profile, id: userId}));
       setSearchUserResults(userResults);
     }

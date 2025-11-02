@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { auth } from '../firebase';
 import { 
@@ -35,6 +36,8 @@ const AuthPage: React.FC = () => {
                 displayName: username
             });
         }
+        // Flag for the app to show follow suggestions
+        localStorage.setItem('aegypt_is_new_user', 'true');
       }
       // onAuthStateChanged in App.tsx will handle the state change
     } catch (err: any) {
