@@ -1,5 +1,8 @@
+
+
 import React, { useState, useEffect } from 'react';
-import { Post, Comment, Profile, EditableProfileData, Notification } from './types';
+import { Post, Comment, Profile, EditableProfileData } from './types';
+import { generateSamplePosts } from './services/geminiService';
 import Header from './components/Header';
 import PostCard from './components/PostCard';
 import PostForm from './components/PostForm';
@@ -11,28 +14,23 @@ import CreatePostWidget from './components/CreatePostWidget';
 import { SearchIcon } from './components/Icons';
 import AuthPage from './components/AuthPage';
 import { auth } from './firebase';
-import { onAuthStateChanged, User, signOut, updateProfile, deleteUser } from 'firebase/auth';
+import { onAuthStateChanged, User, signOut, updateProfile } from 'firebase/auth';
 import UserCard from './components/UserCard';
 import FollowSuggestions from './components/FollowSuggestions';
-import NotificationsPage from './components/NotificationsPage';
-import { useTranslations } from './hooks/useTranslations';
 
 const POSTS_STORAGE_KEY = 'aegypt_posts';
 const PROFILES_STORAGE_KEY = 'aegypt_profiles';
-const NOTIFICATIONS_STORAGE_KEY = 'aegypt_notifications';
 const AVATAR_STORAGE_KEY_PREFIX = 'aegypt_avatar_';
 
 const App: React.FC = () => {
-  const { t } = useTranslations();
   const [user, setUser] = useState<User | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [posts, setPosts] = useState<Post[]>([]);
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
-  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showPostForm, setShowPostForm] = useState(false);
-  const [currentView, setCurrentView] = useState<'home' | 'profile' | 'search' | 'notifications'>('home');
+  const [currentView, setCurrentView] = useState<'home' | 'profile' | 'search'>('home');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [myAvatarUrl, setMyAvatarUrl] = useState('');
@@ -40,27 +38,24 @@ const App: React.FC = () => {
   const [searchPostResults, setSearchPostResults] = useState<Post[]>([]);
   const [searchUserResults, setSearchUserResults] = useState<(Profile & { id: string })[]>([]);
   const [showFollowSuggestions, setShowFollowSuggestions] = useState(false);
+  const [hasCheckedSuggestions, setHasCheckedSuggestions] = useState(false);
+  const [homeFeedView, setHomeFeedView] = useState<'foryou' | 'following'>('foryou');
 
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setIsAuthLoading(false);
+      setHasCheckedSuggestions(false); // Reset check on user change
     });
     return () => unsubscribe();
   }, []);
 
   useEffect(() => {
-    if (isAuthLoading) {
-        return;
-    }
-
     if (!user) {
       setPosts([]);
       setProfiles({});
-      setNotifications([]);
       setMyAvatarUrl('');
-      setShowFollowSuggestions(false);
       setIsLoading(false);
       return;
     }
@@ -110,26 +105,11 @@ const App: React.FC = () => {
         localStorage.removeItem(PROFILES_STORAGE_KEY);
       }
     }
-    
-    let loadedNotifications: Notification[] = [];
-    const storedNotifications = localStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
-    if (storedNotifications) {
-        try {
-            loadedNotifications = JSON.parse(storedNotifications).map((n: any) => ({
-                ...n,
-                timestamp: new Date(n.timestamp)
-            }));
-        } catch (e) {
-            console.error("Failed to parse notifications from localStorage", e);
-            localStorage.removeItem(NOTIFICATIONS_STORAGE_KEY);
-        }
-    }
-
 
     // Ensure the current user has a profile. This makes new users appear in search.
     if (!loadedProfiles[user.uid]) {
       loadedProfiles[user.uid] = {
-        username: user.displayName || user.email?.split('@')[0] || t('user'),
+        username: user.displayName || user.email?.split('@')[0] || 'مستخدم',
         avatarUrl: `https://picsum.photos/seed/${user.uid}/48`,
         gender: '',
         qualification: '',
@@ -140,6 +120,7 @@ const App: React.FC = () => {
     }
 
     // Re-populate profiles from loaded posts to ensure all posting users are discoverable.
+    // This is safe because posts from non-authenticated users have already been filtered out.
     loadedPosts.forEach(post => {
       if (!loadedProfiles[post.userId]) {
         loadedProfiles[post.userId] = {
@@ -157,54 +138,52 @@ const App: React.FC = () => {
     const storedAvatar = localStorage.getItem(AVATAR_STORAGE_KEY);
     setMyAvatarUrl(storedAvatar || loadedProfiles[user.uid]?.avatarUrl || `https://picsum.photos/seed/${user.uid}/48`);
 
-    setPosts(loadedPosts);
-    setProfiles(loadedProfiles);
-    setNotifications(loadedNotifications);
-
-    const isNewUser = localStorage.getItem('aegypt_is_new_user') === 'true';
-    const myProfile = loadedProfiles[user.uid];
-    const hasNotFollowedAnyone = !myProfile || !myProfile.following || myProfile.following.length === 0;
-
-    if (isNewUser && hasNotFollowedAnyone) {
-        const otherUsersExist = Object.keys(loadedProfiles).filter(id => id !== user.uid).length > 0;
-        if (otherUsersExist) {
-            setShowFollowSuggestions(true);
-        }
-        localStorage.removeItem('aegypt_is_new_user');
+    if (Object.keys(loadedProfiles).length > 0) {
+      setPosts(loadedPosts);
+      setProfiles(loadedProfiles);
+      setIsLoading(false);
     } else {
-        setShowFollowSuggestions(false);
+      // No posts loaded, and we won't generate any. Just finish loading.
+      setPosts([]);
+      // Keep any profiles that might exist for users with no posts
+      setProfiles(loadedProfiles);
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
-
-  }, [user, isAuthLoading, t]);
-
-  useEffect(() => {
-    if (!isLoading && user) {
-      if (posts.length > 0) {
-        localStorage.setItem(POSTS_STORAGE_KEY, JSON.stringify(posts));
-      } else {
-        localStorage.removeItem(POSTS_STORAGE_KEY);
-      }
-    }
-  }, [posts, isLoading, user]);
+  }, [user]);
 
   useEffect(() => {
-    if (!isLoading && user) {
-      if (Object.keys(profiles).length > 0) {
-        localStorage.setItem(PROFILES_STORAGE_KEY, JSON.stringify(profiles));
-      } else {
-        localStorage.removeItem(PROFILES_STORAGE_KEY);
-      }
+    if (user && !isLoading && !hasCheckedSuggestions) {
+        const isNewUser = localStorage.getItem('aegypt_is_new_user') === 'true';
+
+        const myProfile = profiles[user.uid];
+        const hasNotFollowedAnyone = !myProfile || !myProfile.following || myProfile.following.length === 0;
+
+        if (isNewUser && hasNotFollowedAnyone) {
+            const otherUsersExist = Object.keys(profiles).filter(id => id !== user.uid).length > 0;
+            if (otherUsersExist) {
+                setShowFollowSuggestions(true);
+            }
+            // Clean up the flag so it doesn't show again
+            localStorage.removeItem('aegypt_is_new_user');
+        }
+        setHasCheckedSuggestions(true); // Mark as checked for this session
     }
-  }, [profiles, isLoading, user]);
+  }, [user, isLoading, profiles, hasCheckedSuggestions]);
+
+
+  useEffect(() => {
+    // Only save if there are actual posts to prevent overwriting with an empty array during loading states
+    if (!isLoading && posts.length > 0) {
+      localStorage.setItem(POSTS_STORAGE_KEY, JSON.stringify(posts));
+    }
+  }, [posts, isLoading]);
+
+  useEffect(() => {
+    if (!isLoading && Object.keys(profiles).length > 0) {
+      localStorage.setItem(PROFILES_STORAGE_KEY, JSON.stringify(profiles));
+    }
+  }, [profiles, isLoading]);
   
-  useEffect(() => {
-    if (!isLoading && user) {
-        localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(notifications));
-    }
-  }, [notifications, isLoading, user]);
-
   useEffect(() => {
     if (!isLoading && user) {
       localStorage.setItem(`${AVATAR_STORAGE_KEY_PREFIX}${user.uid}`, myAvatarUrl);
@@ -216,19 +195,6 @@ const App: React.FC = () => {
     setTimeout(() => setToastMessage(null), 3000);
   };
   
-  const createNotification = (data: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
-      // Avoid notifying users about their own actions
-      if (data.actorId === data.recipientId) return;
-
-      const newNotification: Notification = {
-        ...data,
-        id: Date.now().toString(),
-        timestamp: new Date(),
-        read: false,
-      };
-      setNotifications(current => [newNotification, ...current]);
-  };
-
   const handleUpdateAvatar = (newImageUrl: string) => {
     if (!user) return;
     setMyAvatarUrl(newImageUrl);
@@ -253,7 +219,7 @@ const App: React.FC = () => {
             : post
         )
     );
-    showToast(t('avatarUpdatedSuccess'));
+    showToast('تم تحديث صورة ملفك الشخصي بنجاح!');
   };
 
   const handleUpdateProfile = async (profileData: EditableProfileData) => {
@@ -295,10 +261,10 @@ const App: React.FC = () => {
             })
         );
         
-        showToast(t('profileUpdatedSuccess'));
+        showToast('تم تحديث ملفك الشخصي بنجاح!');
     } catch (error) {
         console.error("Error updating profile: ", error);
-        showToast(t('profileUpdateError'));
+        showToast("حدث خطأ أثناء تحديث الملف الشخصي.");
         throw error; // Re-throw to be caught in ProfilePage if needed for UI state
     }
   };
@@ -311,7 +277,7 @@ const App: React.FC = () => {
     const newPost: Post = {
       id: Date.now().toString(),
       userId: user.uid,
-      username: user.displayName || user.email?.split('@')[0] || t('user'),
+      username: user.displayName || user.email?.split('@')[0] || 'مستخدم',
       avatarUrl: myAvatarUrl,
       gender: myProfile?.gender || '',
       qualification: myProfile?.qualification || '',
@@ -325,60 +291,29 @@ const App: React.FC = () => {
     };
     setPosts([newPost, ...posts]);
     setShowPostForm(false);
-    showToast(t('postAddedSuccess'));
+    showToast('تم نشر منشورك بنجاح!');
   };
   
   const handleAddComment = (postId: string, commentText: string) => {
     if (!user) return;
-
-    const post = posts.find(p => p.id === postId);
-    if (!post) return;
-
     setPosts(currentPosts => 
-      currentPosts.map(p => {
-        if (p.id === postId) {
+      currentPosts.map(post => {
+        if (post.id === postId) {
           const newComment: Comment = {
             id: Date.now().toString(),
             userId: user.uid,
-            username: user.displayName || user.email?.split('@')[0] || t('user'),
+            username: user.displayName || user.email?.split('@')[0] || 'مستخدم',
             text: commentText,
             timestamp: new Date(),
           };
           return { ...post, comments: [...(post.comments || []), newComment] };
         }
-        return p;
+        return post;
       })
     );
-    
-    createNotification({
-        recipientId: post.userId,
-        actorId: user.uid,
-        actorUsername: user.displayName || t('user'),
-        actorAvatarUrl: myAvatarUrl,
-        type: 'comment',
-        postId: post.id,
-        postContentSample: post.content.substring(0, 50),
-    });
   };
 
-  const handleLikePost = (postId: string) => {
-    if (!user) return;
-    const post = posts.find(p => p.id === postId);
-    if (!post) return;
-
-    setPosts(currentPosts => currentPosts.map(p => p.id === postId ? { ...p, likes: (p.likes || 0) + 1 } : p));
-    
-    createNotification({
-        recipientId: post.userId,
-        actorId: user.uid,
-        actorUsername: user.displayName || t('user'),
-        actorAvatarUrl: myAvatarUrl,
-        type: 'like',
-        postId: post.id,
-        postContentSample: post.content.substring(0, 50),
-    });
-  };
-
+  const handleLikePost = (postId: string) => setPosts(currentPosts => currentPosts.map(p => p.id === postId ? { ...p, likes: (p.likes || 0) + 1 } : p));
   const handleSharePost = (postId: string) => setPosts(currentPosts => currentPosts.map(p => p.id === postId ? { ...p, shares: (p.shares || 0) + 1 } : p));
 
   const handleToggleFollow = (userIdToToggle: string) => {
@@ -388,6 +323,7 @@ const App: React.FC = () => {
     setProfiles(currentProfiles => {
         const newProfiles = { ...currentProfiles };
 
+        // Get or create profile for current user, ensuring arrays exist
         const myProfile = { 
             ...(newProfiles[myId] || { 
                 username: user.displayName || '', 
@@ -398,10 +334,11 @@ const App: React.FC = () => {
             following: newProfiles[myId]?.following || [],
         };
         
+        // Get or create profile for target user, ensuring arrays exist
         const targetUserPost = posts.find(p => p.userId === userIdToToggle);
         const otherProfile = { 
             ...(newProfiles[userIdToToggle] || { 
-                username: targetUserPost?.username || t('user'), 
+                username: targetUserPost?.username || 'المستخدم', 
                 avatarUrl: targetUserPost?.avatarUrl || `https://picsum.photos/seed/${userIdToToggle}/48`,
                 gender: '', qualification: '', country: ''
             }),
@@ -414,19 +351,11 @@ const App: React.FC = () => {
         if (isFollowing) {
             myProfile.following = myProfile.following.filter(id => id !== userIdToToggle);
             otherProfile.followers = otherProfile.followers.filter(id => id !== myId);
-            showToast(t('unfollowedUser', { username: otherProfile.username }));
+            showToast(`تم إلغاء متابعة ${otherProfile.username}`);
         } else {
             myProfile.following.push(userIdToToggle);
             otherProfile.followers.push(myId);
-            showToast(t('followedUser', { username: otherProfile.username }));
-
-            createNotification({
-                recipientId: userIdToToggle,
-                actorId: myId,
-                actorUsername: myProfile.username,
-                actorAvatarUrl: myAvatarUrl,
-                type: 'follow',
-            });
+            showToast(`تمت متابعة ${otherProfile.username}`);
         }
 
         newProfiles[myId] = myProfile;
@@ -451,277 +380,11 @@ const App: React.FC = () => {
     setCurrentView('home');
     setSelectedUserId(null);
     setSearchQuery('');
-  };
-
-  const handleGoToNotifications = () => {
-    setCurrentView('notifications');
-  }
-
-  const handleGoToSearch = () => {
-    setCurrentView('search');
-    handleSearch(''); // Show all users by default
+    setSearchPostResults([]);
+    setSearchUserResults([]);
   };
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    setCurrentView('search');
-    const lowercasedQuery = query.toLowerCase().trim();
-
-    if (!lowercasedQuery) {
-// FIX: Cast `profile` to `Profile` to fix TypeScript errors related to property access and spread operator.
-      const allUsers = Object.entries(profiles)
-        .filter(([, profile]) => profile && typeof profile === 'object' && typeof (profile as Profile).username === 'string')
-        .map(([userId, profile]) => ({...(profile as Profile), id: userId}));
-      setSearchUserResults(allUsers);
-      setSearchPostResults([]);
-    } else {
-      const postResults = posts.filter(p => p.content.toLowerCase().includes(lowercasedQuery) || p.username.toLowerCase().includes(lowercasedQuery));
-      setSearchPostResults(postResults);
-
-// FIX: Cast `profile` to `Profile` to fix TypeScript errors related to property access and spread operator.
-      const userResults = Object.entries(profiles)
-          .filter(([, profile]) => profile && typeof profile === 'object' && typeof (profile as Profile).username === 'string' && (profile as Profile).username.toLowerCase().includes(lowercasedQuery))
-          .map(([userId, profile]) => ({...(profile as Profile), id: userId}));
-      setSearchUserResults(userResults);
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      showToast(t('logoutSuccess'));
-    } catch (error) {
-      console.error("Error signing out: ", error);
-      showToast(t('logoutError'));
-    }
-  };
-
-  const handleDeleteAccount = async () => {
-    if (!user) return;
-    const userToDelete = auth.currentUser;
-    if (!userToDelete) {
-      showToast(t('deleteAccountRelogin'));
-      await signOut(auth);
-      return;
-    }
-  
-    const userId = userToDelete.uid;
-  
-    setPosts(currentPosts => {
-      const postsWithoutUser = currentPosts.filter(p => p.userId !== userId);
-      return postsWithoutUser.map(post => ({
-        ...post,
-        comments: (post.comments || []).filter(c => c.userId !== userId)
-      }));
-    });
-  
-    setProfiles(currentProfiles => {
-      const newProfiles = { ...currentProfiles };
-      delete newProfiles[userId];
-  
-      Object.keys(newProfiles).forEach(profileId => {
-        const profile = newProfiles[profileId];
-        if (profile.followers) {
-          profile.followers = profile.followers.filter(id => id !== userId);
-        }
-        if (profile.following) {
-          profile.following = profile.following.filter(id => id !== userId);
-        }
-        newProfiles[profileId] = profile;
-      });
-  
-      return newProfiles;
-    });
-
-    setNotifications(current => current.filter(n => n.recipientId !== userId && n.actorId !== userId));
-
-    localStorage.removeItem(`${AVATAR_STORAGE_KEY_PREFIX}${userId}`);
-    localStorage.removeItem('aegypt_is_new_user');
-  
-    try {
-      await deleteUser(userToDelete);
-      showToast(t('deleteAccountSuccess'));
-    } catch (error: any) {
-      console.error("Error deleting user from Firebase:", error);
-      await signOut(auth);
-      if (error.code === 'auth/requires-recent-login') {
-        showToast(t('deleteAccountRequiresRelogin'));
-      } else {
-        showToast(t('deleteAccountError'));
-      }
-    }
-  };
-
-  const handleMarkAllNotificationsAsRead = () => {
-    if (!user) return;
-    setNotifications(current => current.map(n => n.recipientId === user.uid ? { ...n, read: true } : n));
-  };
-  
-  const handleNotificationClick = (notification: Notification) => {
-    setNotifications(current => 
-      current.map(n => n.id === notification.id ? { ...n, read: true } : n)
-    );
-    
-    // For 'follow', go to the actor's profile.
-    // For 'like'/'comment', go to the post owner's profile. A direct link to the post would be a future enhancement.
-    const targetUserId = notification.type === 'follow' 
-        ? notification.actorId 
-        : posts.find(p => p.id === notification.postId)?.userId;
-
-    if (targetUserId) {
-        handleSelectUser(targetUserId);
-    } else {
-        // Fallback to home if the post/user doesn't exist anymore
-        handleGoHome();
-    }
-  };
-
-  if (isAuthLoading || isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><LoadingSpinner /></div>;
-  }
-  
-  if (!user) {
-    return <AuthPage />;
-  }
-  
-  const myCurrentProfile = profiles[user.uid];
-  const followingSet = new Set(myCurrentProfile?.following || []);
-
-  const suggestedUsers = Object.entries(profiles)
-    .filter(([userId]) => userId !== user.uid)
-    .map(([id, profile]) => ({ id, ...(profile as object) }))
-    .sort(() => 0.5 - Math.random()) // Shuffle
-    .slice(0, 5); // Take up to 5
-  
-  const myNotifications = notifications.filter(n => n.recipientId === user.uid);
-  const unreadNotificationsCount = myNotifications.filter(n => !n.read).length;
-
-  if (showFollowSuggestions && suggestedUsers.length > 0) {
-    return (
-      <FollowSuggestions
-        suggestedUsers={suggestedUsers}
-        following={followingSet}
-        onToggleFollow={handleToggleFollow}
-        onContinue={() => setShowFollowSuggestions(false)}
-      />
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50 text-gray-800 font-sans">
-      <Header 
-        onGoHome={handleGoHome}
-        onGoToProfile={handleGoToMyProfile} 
-        searchQuery={searchQuery}
-        onSearch={handleSearch}
-        onLogout={handleLogout}
-        myAvatarUrl={myAvatarUrl}
-        notifications={myNotifications}
-        unreadCount={unreadNotificationsCount}
-        onNotificationClick={handleNotificationClick}
-        onMarkAllRead={handleMarkAllNotificationsAsRead}
-      />
-      <main className="container mx-auto max-w-2xl px-4 py-8 pb-24">
-        {error && <div className="text-center text-red-500 bg-red-100 p-4 rounded-lg">{error}</div>}
-        
-        {currentView === 'home' && (
-          <>
-            <CreatePostWidget onAddPost={handleAddPost} myAvatarUrl={myAvatarUrl} onShowToast={showToast} />
-            {posts.length > 0 ? (
-              <div className="space-y-6">
-                {posts.map((post) => (
-                  <PostCard key={post.id} post={post} myUserId={user.uid} onSelectUser={handleSelectUser} onAddComment={handleAddComment} onShowToast={showToast} onLikePost={handleLikePost} onSharePost={handleSharePost} myAvatarUrl={myAvatarUrl} />
-                ))}
-              </div>
-            ) : (
-                <div className="text-center text-gray-500 py-16 mt-6 bg-white border border-gray-200 rounded-xl shadow-sm">
-                    <h3 className="text-2xl font-bold text-gray-800">{t('welcomeTitle')}</h3>
-                    <p className="mt-2">{t('welcomeSubtitle')}</p>
-                    <p className="mt-1">{t('welcomeCallToAction')}</p>
-                </div>
-            )}
-          </>
-        )}
-
-        {currentView === 'notifications' && (
-            <NotificationsPage 
-                notifications={myNotifications}
-                onNotificationClick={handleNotificationClick}
-                onMarkAllRead={handleMarkAllNotificationsAsRead}
-            />
-        )}
-
-        {currentView === 'search' && (() => {
-            const filteredUserResults = searchUserResults.filter(p => p.id !== user.uid);
-            const isSearching = searchQuery.trim().length > 0;
-            
-            return (
-              <div>
-                <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">
-                  {isSearching 
-                    ? <>{t('searchResultsFor')} <span className="text-blue-600">"{searchQuery}"</span></>
-                    : t('discoverUsers')
-                  }
-                </h2>
-                
-                {filteredUserResults.length > 0 && (
-                    <div className="mb-8">
-                        <h3 className="text-lg font-semibold text-gray-700 mb-4">{t('users')}</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {filteredUserResults.map(userProfile => (
-                                <UserCard key={userProfile.id} userProfile={userProfile} onSelectUser={handleSelectUser} />
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {isSearching && searchPostResults.length > 0 && (
-                    <div>
-                        {filteredUserResults.length > 0 && <h3 className="text-lg font-semibold text-gray-700 mb-4">{t('posts')}</h3>}
-                        <div className="space-y-6">
-                          {searchPostResults.map((post) => (
-                            <PostCard key={post.id} post={post} myUserId={user.uid} onSelectUser={handleSelectUser} onAddComment={handleAddComment} onShowToast={showToast} onLikePost={handleLikePost} onSharePost={handleSharePost} myAvatarUrl={myAvatarUrl} />
-                          ))
-                          }
-                        </div>
-                    </div>
-                )}
-
-                {searchPostResults.length === 0 && filteredUserResults.length === 0 && (
-                  <div className="text-center text-gray-500 py-10 bg-gray-100 rounded-lg">
-                    <SearchIcon className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                    <h3 className="text-xl font-bold">
-                      {isSearching ? t('noResultsFound') : t('noOtherUsers')}
-                    </h3>
-                    <p className="mt-2">
-                      {isSearching ? t('tryDifferentQuery') : t('newUsersWillAppearHere')}
-                    </p>
-                  </div>
-                )}
-              </div>
-            );
-        })()}
-
-        {currentView === 'profile' && selectedUserId && (
-          <ProfilePage userId={selectedUserId} myUserId={user.uid} myDisplayName={user.displayName || ''} posts={posts} userProfile={profiles[selectedUserId]} onSelectUser={handleSelectUser} onBack={handleGoHome} onAddComment={handleAddComment} onShowToast={showToast} onLikePost={handleLikePost} onSharePost={handleSharePost} following={followingSet} onToggleFollow={handleToggleFollow} onAddPost={handleAddPost} myAvatarUrl={myAvatarUrl} onUpdateAvatar={handleUpdateAvatar} onUpdateProfile={handleUpdateProfile} onDeleteAccount={handleDeleteAccount} />
-        )}
-      </main>
-      
-      <BottomNavBar 
-        currentView={currentView}
-        onGoHome={handleGoHome} 
-        onNewPost={() => setShowPostForm(true)} 
-        onGoToProfile={handleGoToMyProfile}
-        onGoToNotifications={handleGoToNotifications}
-        onGoToSearch={handleGoToSearch}
-        unreadNotificationsCount={unreadNotificationsCount}
-      />
-      
-      {showPostForm && <PostForm onAddPost={handleAddPost} onClose={() => setShowPostForm(false)} onShowToast={showToast} />}
-
-      <Toast message={toastMessage} />
-    </div>
-  );
-};
-
-export default App;
+    setCurrentView('search'); // Always switch to search view
+    const lowercasedQuery = query
