@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect } from 'react';
 import { Post, Comment, Profile, EditableProfileData } from './types';
 import { generateSamplePosts } from './services/geminiService';
@@ -16,6 +17,7 @@ import AuthPage from './components/AuthPage';
 import { auth } from './firebase';
 import { onAuthStateChanged, User, signOut, updateProfile } from 'firebase/auth';
 import UserCard from './components/UserCard';
+import FollowSuggestions from './components/FollowSuggestions';
 
 const POSTS_STORAGE_KEY = 'aegypt_posts';
 const PROFILES_STORAGE_KEY = 'aegypt_profiles';
@@ -36,12 +38,15 @@ const App: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [searchPostResults, setSearchPostResults] = useState<Post[]>([]);
   const [searchUserResults, setSearchUserResults] = useState<(Profile & { id: string })[]>([]);
+  const [showFollowSuggestions, setShowFollowSuggestions] = useState(false);
+  const [hasCheckedSuggestions, setHasCheckedSuggestions] = useState(false);
 
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setIsAuthLoading(false);
+      setHasCheckedSuggestions(false); // Reset check on user change
     });
     return () => unsubscribe();
   }, []);
@@ -131,6 +136,27 @@ const App: React.FC = () => {
       setIsLoading(false);
     }
   }, [user]);
+
+  useEffect(() => {
+    if (user && !isLoading && !hasCheckedSuggestions) {
+        const creationTime = new Date(user.metadata.creationTime || 0).getTime();
+        const lastSignInTime = new Date(user.metadata.lastSignInTime || 0).getTime();
+        const timeDifference = Math.abs(lastSignInTime - creationTime);
+
+        const myProfile = profiles[user.uid];
+        const isNewUser = timeDifference < 5000; // Heuristic: first login is within 5s of creation
+        const hasNotFollowedAnyone = !myProfile || !myProfile.following || myProfile.following.length === 0;
+
+        if (isNewUser && hasNotFollowedAnyone) {
+            const otherUsersExist = Object.keys(profiles).filter(id => id !== user.uid).length > 0;
+            if (otherUsersExist) {
+                setShowFollowSuggestions(true);
+            }
+        }
+        setHasCheckedSuggestions(true); // Mark as checked for this session
+    }
+  }, [user, isLoading, profiles, hasCheckedSuggestions]);
+
 
   useEffect(() => {
     if (!isLoading && posts.length > 0) {
@@ -351,7 +377,10 @@ const App: React.FC = () => {
 
     if (!lowercasedQuery) {
       // If query is empty, show all users
+      // FIX: Added a filter to ensure profile is a valid object before spreading.
+      // This prevents runtime errors if localStorage contains invalid profile data (e.g., null, undefined, or primitives).
       const allUsers = (Object.entries(profiles) as [string, Profile][])
+        .filter(([, profile]) => profile && typeof profile === 'object')
         .map(([userId, profile]) => ({...profile, id: userId}));
       setSearchUserResults(allUsers);
       setSearchPostResults([]);
@@ -360,8 +389,11 @@ const App: React.FC = () => {
       const postResults = posts.filter(p => p.content.toLowerCase().includes(lowercasedQuery) || p.username.toLowerCase().includes(lowercasedQuery));
       setSearchPostResults(postResults);
 
+      // FIX: Added a check to ensure `profile.username` exists and is a string before calling `toLowerCase()`.
+      // This prevents a potential runtime error and fixes the TypeScript error on the following `.map()` line,
+      // as it helps TypeScript correctly infer that `profile` is an object that can be spread.
       const userResults = (Object.entries(profiles) as [string, Profile][])
-          .filter(([, profile]) => profile && profile.username.toLowerCase().includes(lowercasedQuery))
+          .filter(([, profile]) => profile && typeof profile.username === 'string' && profile.username.toLowerCase().includes(lowercasedQuery))
           .map(([userId, profile]) => ({...profile, id: userId}));
       setSearchUserResults(userResults);
     }
@@ -387,6 +419,23 @@ const App: React.FC = () => {
   
   const myCurrentProfile = profiles[user.uid];
   const followingSet = new Set(myCurrentProfile?.following || []);
+
+  const suggestedUsers = Object.entries(profiles)
+    .filter(([userId]) => userId !== user.uid)
+    .map(([id, profile]) => ({ id, ...profile }))
+    .sort(() => 0.5 - Math.random()) // Shuffle
+    .slice(0, 5); // Take up to 5
+
+  if (showFollowSuggestions && suggestedUsers.length > 0) {
+    return (
+      <FollowSuggestions
+        suggestedUsers={suggestedUsers}
+        following={followingSet}
+        onToggleFollow={handleToggleFollow}
+        onContinue={() => setShowFollowSuggestions(false)}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 font-sans">
