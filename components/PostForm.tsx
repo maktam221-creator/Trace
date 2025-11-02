@@ -83,7 +83,7 @@ const PostForm: React.FC<PostFormProps> = ({ onAddPost, onClose, onShowToast }) 
                 <div className="relative">
                 {imagePreview && (
                     <>
-                    <img src={imagePreview} alt={t('imagePreviewAlt')} className="w-full h-auto rounded-lg max-h-60 object-contain" />
+                    <img src={imagePreview} alt={t('imagePreviewAlt')} className="w-full h-60 rounded-lg object-contain bg-gray-100" />
                     <button
                         type="button"
                         onClick={handleRemoveImage}

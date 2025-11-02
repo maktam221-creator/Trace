@@ -87,11 +87,11 @@ const PostCard: React.FC<PostCardProps> = ({ post, myUserId, onSelectUser, onAdd
       </p>
 
       {post.imageUrl && (
-        <div className="mb-4 -mx-5 -mt-2">
+        <div className="mb-4 -mx-5 -mt-2 aspect-video bg-gray-100">
           <img 
             src={post.imageUrl}
             alt={t('postContentAlt')}
-            className="w-full h-auto object-cover max-h-96"
+            className="w-full h-full object-cover"
           />
         </div>
       )}

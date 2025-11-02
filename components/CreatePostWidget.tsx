@@ -93,7 +93,7 @@ const CreatePostWidget: React.FC<CreatePostWidgetProps> = ({ onAddPost, myAvatar
             <div className="ms-16 relative">
                 {imagePreview && (
                 <>
-                    <img src={imagePreview} alt={t('imagePreviewAlt')} className="w-full h-auto rounded-lg max-h-80 object-contain" />
+                    <img src={imagePreview} alt={t('imagePreviewAlt')} className="w-full h-80 rounded-lg object-contain bg-gray-100" />
                     <button
                     type="button"
                     onClick={handleRemoveImage}
