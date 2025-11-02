@@ -6,13 +6,15 @@ import { ArrowRightIcon } from './Icons';
 interface ProfilePageProps {
   userId: string;
   posts: Post[];
-  onSelectUser: (userId: string) => void;
+  onSelectUser: (userId:string) => void;
   onBack: () => void;
   onAddComment: (postId: string, commentText: string) => void;
   onShowToast: (message: string) => void;
+  onLikePost: (postId: string) => void;
+  onSharePost: (postId: string) => void;
 }
 
-const ProfilePage: React.FC<ProfilePageProps> = ({ userId, posts, onSelectUser, onBack, onAddComment, onShowToast }) => {
+const ProfilePage: React.FC<ProfilePageProps> = ({ userId, posts, onSelectUser, onBack, onAddComment, onShowToast, onLikePost, onSharePost }) => {
   const userPosts = posts.filter(p => p.userId === userId).sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
   const user = userPosts.length > 0 ? userPosts[0] : posts.find(p => p.userId === userId);
 
@@ -70,6 +72,8 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ userId, posts, onSelectUser, 
                       onSelectUser={onSelectUser}
                       onAddComment={onAddComment}
                       onShowToast={onShowToast}
+                      onLikePost={onLikePost}
+                      onSharePost={onSharePost}
                     />
                 ))
             ) : (

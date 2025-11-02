@@ -60,6 +60,8 @@ const App: React.FC = () => {
       content,
       timestamp: new Date(),
       comments: [],
+      likes: 0,
+      shares: 0,
       ...(imageUrl && { imageUrl }),
     };
     setPosts([newPost, ...posts]);
@@ -85,6 +87,34 @@ const App: React.FC = () => {
         return post;
       })
     );
+  };
+
+  const handleLikePost = (postId: string) => {
+    setPosts(currentPosts =>
+      currentPosts.map(post => {
+        if (post.id === postId) {
+          return {
+            ...post,
+            likes: (post.likes || 0) + 1,
+          };
+        }
+        return post;
+      }),
+    );
+  };
+
+  const handleSharePost = (postId: string) => {
+      setPosts(currentPosts =>
+          currentPosts.map(post => {
+              if (post.id === postId) {
+                  return {
+                      ...post,
+                      shares: (post.shares || 0) + 1,
+                  };
+              }
+              return post;
+          }),
+      );
   };
 
   const handleSelectUser = (userId: string) => {
@@ -118,6 +148,8 @@ const App: React.FC = () => {
                   onSelectUser={handleSelectUser}
                   onAddComment={handleAddComment}
                   onShowToast={showToast}
+                  onLikePost={handleLikePost}
+                  onSharePost={handleSharePost}
                 />
               ))
             ) : (
@@ -137,6 +169,8 @@ const App: React.FC = () => {
             onBack={handleGoHome}
             onAddComment={handleAddComment}
             onShowToast={showToast}
+            onLikePost={handleLikePost}
+            onSharePost={handleSharePost}
           />
         )}
       </main>

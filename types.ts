@@ -15,4 +15,6 @@ export interface Post {
   timestamp: Date;
   imageUrl?: string;
   comments?: Comment[];
+  likes?: number;
+  shares?: number;
 }

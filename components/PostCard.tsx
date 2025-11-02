@@ -8,10 +8,13 @@ interface PostCardProps {
   onSelectUser: (userId: string) => void;
   onAddComment: (postId: string, commentText: string) => void;
   onShowToast: (message: string) => void;
+  onLikePost: (postId: string) => void;
+  onSharePost: (postId: string) => void;
 }
 
-const PostCard: React.FC<PostCardProps> = ({ post, onSelectUser, onAddComment, onShowToast }) => {
+const PostCard: React.FC<PostCardProps> = ({ post, onSelectUser, onAddComment, onShowToast, onLikePost, onSharePost }) => {
   const [showComments, setShowComments] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
 
   const timeAgo = (date: Date): string => {
     const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
@@ -28,6 +31,13 @@ const PostCard: React.FC<PostCardProps> = ({ post, onSelectUser, onAddComment, o
     return `الآن`;
   };
 
+  const handleLike = () => {
+    if (!isLiked) {
+      onLikePost(post.id);
+      setIsLiked(true);
+    }
+  };
+
   const handleShare = async () => {
     const shareData = {
       title: `منشور من ${post.username}`,
@@ -36,6 +46,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onSelectUser, onAddComment, o
     try {
       if (navigator.share) {
         await navigator.share(shareData);
+        onSharePost(post.id);
       } else {
         throw new Error('Web Share API not supported');
       }
@@ -52,6 +63,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onSelectUser, onAddComment, o
       try {
         await navigator.clipboard.writeText(post.content);
         onShowToast('تم نسخ المنشور إلى الحافظة');
+        onSharePost(post.id);
       } catch (clipErr) {
         console.error('Clipboard write failed:', clipErr);
         // This toast is shown if both share and clipboard fail.
@@ -95,9 +107,12 @@ const PostCard: React.FC<PostCardProps> = ({ post, onSelectUser, onAddComment, o
       )}
 
       <div className="pt-4 mt-auto border-t border-gray-100 flex justify-around text-gray-500">
-        <button className="flex items-center space-x-2 space-x-reverse hover:text-red-500 transition-colors p-2 rounded-lg">
-          <HeartIcon className="w-6 h-6" />
-          <span className="font-semibold">إعجاب</span>
+        <button
+          onClick={handleLike}
+          className={`flex items-center space-x-2 space-x-reverse transition-colors p-2 rounded-lg ${isLiked ? 'text-red-500' : 'hover:text-red-500'}`}
+        >
+          <HeartIcon className={`w-6 h-6 ${isLiked ? 'fill-current' : ''}`} />
+          <span className="font-semibold">إعجاب ({post.likes || 0})</span>
         </button>
         <button 
           onClick={() => setShowComments(!showComments)}
@@ -111,7 +126,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onSelectUser, onAddComment, o
           className="flex items-center space-x-2 space-x-reverse hover:text-green-500 transition-colors p-2 rounded-lg"
         >
           <ArrowUpOnSquareIcon className="w-6 h-6" />
-          <span className="font-semibold">مشاركة</span>
+          <span className="font-semibold">مشاركة ({post.shares || 0})</span>
         </button>
       </div>
       {showComments && (
