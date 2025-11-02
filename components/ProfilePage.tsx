@@ -5,6 +5,7 @@ import { ArrowRightIcon } from './Icons';
 
 interface ProfilePageProps {
   userId: string;
+  myUserId: string;
   posts: Post[];
   onSelectUser: (userId:string) => void;
   onBack: () => void;
@@ -12,11 +13,27 @@ interface ProfilePageProps {
   onShowToast: (message: string) => void;
   onLikePost: (postId: string) => void;
   onSharePost: (postId: string) => void;
+  following: Set<string>;
+  onToggleFollow: (userId: string) => void;
 }
 
-const ProfilePage: React.FC<ProfilePageProps> = ({ userId, posts, onSelectUser, onBack, onAddComment, onShowToast, onLikePost, onSharePost }) => {
+const ProfilePage: React.FC<ProfilePageProps> = ({ 
+    userId, 
+    myUserId, 
+    posts, 
+    onSelectUser, 
+    onBack, 
+    onAddComment, 
+    onShowToast, 
+    onLikePost, 
+    onSharePost,
+    following,
+    onToggleFollow
+}) => {
   const userPosts = posts.filter(p => p.userId === userId).sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
   const user = userPosts.length > 0 ? userPosts[0] : posts.find(p => p.userId === userId);
+  const isMyProfile = userId === myUserId;
+  const isFollowing = following.has(userId);
 
   if (!user) {
     // A special case for "new-user" who might not have posts yet
@@ -57,9 +74,18 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ userId, posts, onSelectUser, 
             />
             <h2 className="text-3xl font-bold text-gray-800">{user.username}</h2>
             <p className="text-gray-500 mt-1">@{user.userId}</p>
-            <button className="mt-4 bg-blue-600 text-white font-semibold px-8 py-2 rounded-full hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-                متابعة
-            </button>
+            {!isMyProfile && (
+                <button 
+                    onClick={() => onToggleFollow(userId)}
+                    className={`mt-4 font-semibold px-8 py-2 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 w-40 ${
+                        isFollowing
+                            ? 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
+                            : 'bg-blue-600 text-white hover:bg-blue-700'
+                    }`}
+                >
+                    {isFollowing ? 'إلغاء المتابعة' : 'متابعة'}
+                </button>
+            )}
         </div>
 
         <h3 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">المنشورات</h3>

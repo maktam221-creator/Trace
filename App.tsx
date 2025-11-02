@@ -19,6 +19,7 @@ const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<'home' | 'profile'>('home');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [following, setFollowing] = useState<Set<string>>(new Set());
 
   const loadInitialPosts = useCallback(async () => {
     try {
@@ -117,6 +118,23 @@ const App: React.FC = () => {
       );
   };
 
+  const handleToggleFollow = (userIdToToggle: string) => {
+    setFollowing(currentFollowing => {
+      const newFollowing = new Set(currentFollowing);
+      const user = posts.find(p => p.userId === userIdToToggle);
+      const username = user ? user.username : 'المستخدم';
+
+      if (newFollowing.has(userIdToToggle)) {
+        newFollowing.delete(userIdToToggle);
+        showToast(`تم إلغاء متابعة ${username}`);
+      } else {
+        newFollowing.add(userIdToToggle);
+        showToast(`تمت متابعة ${username}`);
+      }
+      return newFollowing;
+    });
+  };
+
   const handleSelectUser = (userId: string) => {
     setSelectedUserId(userId);
     setCurrentView('profile');
@@ -133,7 +151,11 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 font-sans">
-      <Header onNewPost={() => setShowPostForm(true)} onGoHome={handleGoHome} />
+      <Header 
+        onNewPost={() => setShowPostForm(true)} 
+        onGoHome={handleGoHome}
+        onGoToProfile={handleGoToMyProfile} 
+      />
       <main className="container mx-auto max-w-2xl px-4 py-8 pb-24">
         {isLoading && <LoadingSpinner />}
         {error && <div className="text-center text-red-500 bg-red-100 p-4 rounded-lg">{error}</div>}
@@ -164,6 +186,7 @@ const App: React.FC = () => {
         {!isLoading && !error && currentView === 'profile' && selectedUserId && (
           <ProfilePage 
             userId={selectedUserId}
+            myUserId={MY_USER_ID}
             posts={posts}
             onSelectUser={handleSelectUser}
             onBack={handleGoHome}
@@ -171,6 +194,8 @@ const App: React.FC = () => {
             onShowToast={showToast}
             onLikePost={handleLikePost}
             onSharePost={handleSharePost}
+            following={following}
+            onToggleFollow={handleToggleFollow}
           />
         )}
       </main>
