@@ -13,7 +13,7 @@ import CreatePostWidget from './components/CreatePostWidget';
 import { SearchIcon } from './components/Icons';
 import AuthPage from './components/AuthPage';
 import { auth } from './firebase';
-import { onAuthStateChanged, User, signOut } from 'firebase/auth';
+import { onAuthStateChanged, User, signOut, updateProfile } from 'firebase/auth';
 
 const POSTS_STORAGE_KEY = 'aegypt_posts';
 const AVATAR_STORAGE_KEY_PREFIX = 'aegypt_avatar_';
@@ -139,6 +139,39 @@ const App: React.FC = () => {
     );
     showToast('تم تحديث صورة ملفك الشخصي بنجاح!');
   };
+
+  const handleUpdateProfile = async (newUsername: string) => {
+    if (!user) return Promise.reject("No user");;
+
+    try {
+        await updateProfile(user, {
+            displayName: newUsername
+        });
+        
+        setPosts(currentPosts => 
+            currentPosts.map(post => {
+                const updatedPost = post.userId === user.uid
+                    ? { ...post, username: newUsername }
+                    : post;
+                
+                const updatedComments = (updatedPost.comments || []).map(comment =>
+                    comment.userId === user.uid
+                    ? { ...comment, username: newUsername }
+                    : comment
+                );
+
+                return { ...updatedPost, comments: updatedComments };
+            })
+        );
+        
+        showToast('تم تحديث ملفك الشخصي بنجاح!');
+    } catch (error) {
+        console.error("Error updating profile: ", error);
+        showToast("حدث خطأ أثناء تحديث الملف الشخصي.");
+        throw error; // Re-throw to be caught in ProfilePage if needed for UI state
+    }
+  };
+
 
   const handleAddPost = (content: string, imageUrl: string | null) => {
     if (!user) return;
@@ -293,7 +326,7 @@ const App: React.FC = () => {
         )}
 
         {!isLoading && !error && currentView === 'profile' && selectedUserId && (
-          <ProfilePage userId={selectedUserId} myUserId={user.uid} posts={posts} onSelectUser={handleSelectUser} onBack={handleGoHome} onAddComment={handleAddComment} onShowToast={showToast} onLikePost={handleLikePost} onSharePost={handleSharePost} following={following} onToggleFollow={handleToggleFollow} onAddPost={handleAddPost} myAvatarUrl={myAvatarUrl} onUpdateAvatar={handleUpdateAvatar} />
+          <ProfilePage userId={selectedUserId} myUserId={user.uid} posts={posts} onSelectUser={handleSelectUser} onBack={handleGoHome} onAddComment={handleAddComment} onShowToast={showToast} onLikePost={handleLikePost} onSharePost={handleSharePost} following={following} onToggleFollow={handleToggleFollow} onAddPost={handleAddPost} myAvatarUrl={myAvatarUrl} onUpdateAvatar={handleUpdateAvatar} onUpdateProfile={handleUpdateProfile} />
         )}
       </main>
 

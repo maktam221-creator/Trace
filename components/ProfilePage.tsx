@@ -1,7 +1,8 @@
+
 import React, { useRef, useState } from 'react';
 import { Post } from '../types';
 import PostCard from './PostCard';
-import { ArrowRightIcon, CameraIcon } from './Icons';
+import { ArrowRightIcon, CameraIcon, PencilIcon } from './Icons';
 import CreatePostWidget from './CreatePostWidget';
 import { uploadImage } from '../services/imageService';
 
@@ -20,6 +21,7 @@ interface ProfilePageProps {
   onAddPost: (content: string, imageUrl: string | null) => void;
   myAvatarUrl: string;
   onUpdateAvatar: (newImageUrl: string) => void;
+  onUpdateProfile: (newUsername: string) => Promise<void>;
 }
 
 const ProfilePage: React.FC<ProfilePageProps> = ({ 
@@ -36,7 +38,8 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
     onToggleFollow,
     onAddPost,
     myAvatarUrl,
-    onUpdateAvatar
+    onUpdateAvatar,
+    onUpdateProfile
 }) => {
   const userPosts = posts.filter(p => p.userId === userId).sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
   let user: Post | Omit<Post, 'id'| 'content' | 'timestamp'> | undefined = userPosts.length > 0 ? userPosts[0] : posts.find(p => p.userId === userId);
@@ -44,6 +47,10 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
   const isFollowing = following.has(userId);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [newUsername, setNewUsername] = useState(user?.username || '');
+  const [isSaving, setIsSaving] = useState(false);
 
   // Special handling for my own profile to ensure it always renders, even without posts
   if (isMyProfile && !user) {
@@ -65,11 +72,30 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
             onShowToast('فشل تحديث الصورة. الرجاء المحاولة مرة أخرى.');
         } finally {
             setIsUploadingAvatar(false);
-            // Reset file input
             if (fileInputRef.current) {
                 fileInputRef.current.value = "";
             }
         }
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user || !newUsername.trim() || newUsername.trim() === user.username) return;
+    setIsSaving(true);
+    try {
+        await onUpdateProfile(newUsername.trim());
+        setIsEditing(false);
+    } catch (error) {
+        console.error("Failed to update profile:", error);
+    } finally {
+        setIsSaving(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    if (user) {
+        setNewUsername(user.username);
     }
   };
 
@@ -124,9 +150,21 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
                     </>
                 )}
             </div>
+            
+            {isEditing ? (
+                <input
+                    type="text"
+                    value={newUsername}
+                    onChange={(e) => setNewUsername(e.target.value)}
+                    className="text-3xl font-bold text-gray-800 text-center bg-gray-100 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 w-full max-w-xs mx-auto"
+                    autoFocus
+                />
+            ) : (
+                <h2 className="text-3xl font-bold text-gray-800">{user.username}</h2>
+            )}
 
-            <h2 className="text-3xl font-bold text-gray-800">{user.username}</h2>
             <p className="text-gray-500 mt-1">@{user.userId.substring(0,8)}...</p>
+
             {!isMyProfile && (
                 <button 
                     onClick={() => onToggleFollow(userId)}
@@ -138,6 +176,39 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
                 >
                     {isFollowing ? 'إلغاء المتابعة' : 'متابعة'}
                 </button>
+            )}
+
+            {isMyProfile && !isEditing && (
+                <div className="flex justify-center">
+                    <button
+                        onClick={() => {
+                            setIsEditing(true);
+                            setNewUsername(user.username);
+                        }}
+                        className="mt-4 font-semibold px-6 py-2 rounded-full transition-colors bg-gray-200 text-gray-800 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center justify-center gap-2"
+                    >
+                        <PencilIcon className="w-5 h-5" />
+                        <span>تعديل الملف الشخصي</span>
+                    </button>
+                </div>
+            )}
+            {isMyProfile && isEditing && (
+                <div className="mt-4 flex gap-4 justify-center">
+                    <button
+                        onClick={handleCancelEdit}
+                        disabled={isSaving}
+                        className="font-semibold px-8 py-2 rounded-full transition-colors bg-white text-gray-700 border border-gray-300 hover:bg-gray-100 disabled:opacity-50"
+                    >
+                        إلغاء
+                    </button>
+                    <button
+                        onClick={handleSaveProfile}
+                        disabled={isSaving || !newUsername.trim() || newUsername.trim() === user.username}
+                        className="font-semibold px-8 py-2 rounded-full transition-colors bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed w-32"
+                    >
+                        {isSaving ? 'جاري الحفظ...' : 'حفظ'}
+                    </button>
+                </div>
             )}
         </div>
 
