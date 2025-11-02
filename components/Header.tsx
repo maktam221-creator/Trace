@@ -33,6 +33,7 @@ const Header: React.FC<HeaderProps> = ({ onGoHome, onGoToProfile, searchQuery, o
               placeholder="ابحث عن منشورات أو مستخدمين..."
               value={searchQuery}
               onChange={(e) => onSearch(e.target.value)}
+              onFocus={() => onSearch(searchQuery)}
               className="w-full bg-gray-100 border-2 border-transparent rounded-full py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
             />
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">

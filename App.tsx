@@ -346,24 +346,25 @@ const App: React.FC = () => {
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    if (!query.trim()) {
-      setCurrentView('home');
-      setSearchPostResults([]);
-      setSearchUserResults([]);
-      return;
-    }
-    const lowercasedQuery = query.toLowerCase();
-    
-    const postResults = posts.filter(p => p.content.toLowerCase().includes(lowercasedQuery) || p.username.toLowerCase().includes(lowercasedQuery));
-    setSearchPostResults(postResults);
+    setCurrentView('search'); // Always switch to search view
+    const lowercasedQuery = query.toLowerCase().trim();
 
-    // FIX: Add type assertion for Object.entries and a runtime check for profile to fix TS errors.
-    const userResults = (Object.entries(profiles) as [string, Profile][])
-        .filter(([, profile]) => profile && profile.username.toLowerCase().includes(lowercasedQuery))
+    if (!lowercasedQuery) {
+      // If query is empty, show all users
+      const allUsers = (Object.entries(profiles) as [string, Profile][])
         .map(([userId, profile]) => ({...profile, id: userId}));
-    setSearchUserResults(userResults);
-    
-    setCurrentView('search');
+      setSearchUserResults(allUsers);
+      setSearchPostResults([]);
+    } else {
+      // If query is not empty, perform search
+      const postResults = posts.filter(p => p.content.toLowerCase().includes(lowercasedQuery) || p.username.toLowerCase().includes(lowercasedQuery));
+      setSearchPostResults(postResults);
+
+      const userResults = (Object.entries(profiles) as [string, Profile][])
+          .filter(([, profile]) => profile && profile.username.toLowerCase().includes(lowercasedQuery))
+          .map(([userId, profile]) => ({...profile, id: userId}));
+      setSearchUserResults(userResults);
+    }
   };
 
   const handleLogout = async () => {
@@ -422,9 +423,16 @@ const App: React.FC = () => {
 
         {!isLoading && !error && currentView === 'search' && (() => {
             const filteredUserResults = searchUserResults.filter(p => p.id !== user.uid);
+            const isSearching = searchQuery.trim().length > 0;
+            
             return (
               <div>
-                <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">نتائج البحث عن: <span className="text-blue-600">"{searchQuery}"</span></h2>
+                <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">
+                  {isSearching 
+                    ? <>نتائج البحث عن: <span className="text-blue-600">"{searchQuery}"</span></>
+                    : 'اكتشف المستخدمين'
+                  }
+                </h2>
                 
                 {filteredUserResults.length > 0 && (
                     <div className="mb-8">
@@ -437,7 +445,7 @@ const App: React.FC = () => {
                     </div>
                 )}
 
-                {searchPostResults.length > 0 && (
+                {isSearching && searchPostResults.length > 0 && (
                     <div>
                         {filteredUserResults.length > 0 && <h3 className="text-lg font-semibold text-gray-700 mb-4">المنشورات</h3>}
                         <div className="space-y-6">
@@ -452,8 +460,12 @@ const App: React.FC = () => {
                 {searchPostResults.length === 0 && filteredUserResults.length === 0 && (
                   <div className="text-center text-gray-500 py-10 bg-gray-100 rounded-lg">
                     <SearchIcon className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                    <h3 className="text-xl font-bold">لم يتم العثور على نتائج</h3>
-                    <p className="mt-2">جرّب البحث عن كلمة أخرى.</p>
+                    <h3 className="text-xl font-bold">
+                      {isSearching ? 'لم يتم العثور على نتائج' : 'لا يوجد مستخدمون آخرون للعرض'}
+                    </h3>
+                    <p className="mt-2">
+                      {isSearching ? 'جرّب البحث عن كلمة أخرى.' : 'عندما يقوم مستخدمون جدد بالتسجيل، سيظهرون هنا.'}
+                    </p>
                   </div>
                 )}
               </div>
