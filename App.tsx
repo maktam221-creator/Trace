@@ -8,6 +8,7 @@ import LoadingSpinner from './components/LoadingSpinner';
 import BottomNavBar from './components/BottomNavBar';
 import ProfilePage from './components/ProfilePage';
 import Toast from './components/Toast';
+import CreatePostWidget from './components/CreatePostWidget';
 
 const MY_USER_ID = 'new-user';
 
@@ -152,7 +153,6 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 font-sans">
       <Header 
-        onNewPost={() => setShowPostForm(true)} 
         onGoHome={handleGoHome}
         onGoToProfile={handleGoToMyProfile} 
       />
@@ -161,26 +161,29 @@ const App: React.FC = () => {
         {error && <div className="text-center text-red-500 bg-red-100 p-4 rounded-lg">{error}</div>}
         
         {!isLoading && !error && currentView === 'home' && (
-          <div className="space-y-6">
-            {posts.length > 0 ? (
-              posts.map((post) => (
-                <PostCard 
-                  key={post.id} 
-                  post={post} 
-                  onSelectUser={handleSelectUser}
-                  onAddComment={handleAddComment}
-                  onShowToast={showToast}
-                  onLikePost={handleLikePost}
-                  onSharePost={handleSharePost}
-                />
-              ))
-            ) : (
-              <div className="text-center text-gray-500 py-10">
-                <h2 className="text-2xl font-bold">لا توجد منشورات بعد</h2>
-                <p className="mt-2">كن أول من ينشر شيئًا!</p>
-              </div>
-            )}
-          </div>
+          <>
+            <CreatePostWidget onNewPost={() => setShowPostForm(true)} />
+            <div className="space-y-6">
+              {posts.length > 0 ? (
+                posts.map((post) => (
+                  <PostCard 
+                    key={post.id} 
+                    post={post} 
+                    onSelectUser={handleSelectUser}
+                    onAddComment={handleAddComment}
+                    onShowToast={showToast}
+                    onLikePost={handleLikePost}
+                    onSharePost={handleSharePost}
+                  />
+                ))
+              ) : (
+                <div className="text-center text-gray-500 py-10">
+                  <h2 className="text-2xl font-bold">لا توجد منشورات بعد</h2>
+                  <p className="mt-2">كن أول من ينشر شيئًا!</p>
+                </div>
+              )}
+            </div>
+          </>
         )}
 
         {!isLoading && !error && currentView === 'profile' && selectedUserId && (

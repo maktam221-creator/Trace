@@ -2,12 +2,11 @@ import React from 'react';
 import { UserIcon } from './Icons';
 
 interface HeaderProps {
-  onNewPost: () => void;
   onGoHome: () => void;
   onGoToProfile: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onNewPost, onGoHome, onGoToProfile }) => {
+const Header: React.FC<HeaderProps> = ({ onGoHome, onGoToProfile }) => {
   return (
     <header className="bg-white shadow-md sticky top-0 z-10">
       <div className="container mx-auto max-w-5xl px-4 py-3 flex justify-between items-center">
@@ -17,12 +16,6 @@ const Header: React.FC<HeaderProps> = ({ onNewPost, onGoHome, onGoToProfile }) =
           </h1>
         </button>
         <div className="hidden sm:flex items-center space-x-4 space-x-reverse">
-          <button
-            onClick={onNewPost}
-            className="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            منشور جديد
-          </button>
           <button
               onClick={onGoToProfile}
               className="flex items-center space-x-2 space-x-reverse text-gray-700 font-semibold px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors"
