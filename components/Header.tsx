@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { SearchIcon, ArrowRightOnRectangleIcon, HomeIcon, GlobeAltIcon } from './Icons';
+import { SearchIcon, ArrowRightOnRectangleIcon, HomeIcon, GlobeAltIcon, BellIcon } from './Icons';
 import { useTranslations } from '../hooks/useTranslations';
+import { Notification } from '../types';
+import NotificationsPanel from './NotificationsPanel';
 
 interface HeaderProps {
   onGoHome: () => void;
@@ -9,12 +11,29 @@ interface HeaderProps {
   onSearch: (query: string) => void;
   onLogout: () => void;
   myAvatarUrl: string;
+  notifications: Notification[];
+  unreadCount: number;
+  onNotificationClick: (notification: Notification) => void;
+  onMarkAllRead: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onGoHome, onGoToProfile, searchQuery, onSearch, onLogout, myAvatarUrl }) => {
+const Header: React.FC<HeaderProps> = ({ 
+  onGoHome, 
+  onGoToProfile, 
+  searchQuery, 
+  onSearch, 
+  onLogout, 
+  myAvatarUrl,
+  notifications,
+  unreadCount,
+  onNotificationClick,
+  onMarkAllRead 
+}) => {
   const { t, setLanguage, language } = useTranslations();
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const langDropdownRef = useRef<HTMLDivElement>(null);
+  const notificationsRef = useRef<HTMLDivElement>(null);
 
   const languages = {
     en: 'English',
@@ -33,10 +52,22 @@ const Header: React.FC<HeaderProps> = ({ onGoHome, onGoToProfile, searchQuery, o
     setIsLangDropdownOpen(false);
   };
 
+  const handleNotificationIconClick = () => {
+    setIsNotificationsOpen(!isNotificationsOpen);
+  }
+
+  const handleNotificationPanelClick = (notification: Notification) => {
+    onNotificationClick(notification);
+    setIsNotificationsOpen(false); // Close panel on click
+  }
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (langDropdownRef.current && !langDropdownRef.current.contains(event.target as Node)) {
         setIsLangDropdownOpen(false);
+      }
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
+        setIsNotificationsOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -68,7 +99,7 @@ const Header: React.FC<HeaderProps> = ({ onGoHome, onGoToProfile, searchQuery, o
           </form>
         </div>
 
-        <div className="hidden sm:flex items-center space-x-4 rtl:space-x-reverse flex-shrink-0">
+        <div className="hidden sm:flex items-center space-x-2 rtl:space-x-reverse flex-shrink-0">
            <div className="relative" ref={langDropdownRef}>
             <button
                 onClick={() => setIsLangDropdownOpen(!isLangDropdownOpen)}
@@ -91,19 +122,40 @@ const Header: React.FC<HeaderProps> = ({ onGoHome, onGoToProfile, searchQuery, o
                 </div>
             )}
            </div>
+           
+           <div className="relative" ref={notificationsRef}>
+             <button
+                onClick={handleNotificationIconClick}
+                className="text-gray-600 p-2 rounded-full hover:bg-gray-100 transition-colors relative"
+                aria-label={t('notifications')}
+             >
+                <BellIcon className="w-7 h-7" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 end-1 block w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
+                )}
+             </button>
+             {isNotificationsOpen && (
+               <NotificationsPanel 
+                  notifications={notifications}
+                  onNotificationClick={handleNotificationPanelClick}
+                  onMarkAllRead={onMarkAllRead}
+               />
+             )}
+           </div>
+
+           <button
+              onClick={onGoHome}
+              className="text-gray-600 p-2 rounded-full hover:bg-gray-100 transition-colors"
+              aria-label={t('homeAria')}
+          >
+              <HomeIcon className="w-7 h-7" />
+          </button>
            <button
               onClick={onGoToProfile}
               className="block rounded-full hover:ring-2 hover:ring-blue-500 hover:ring-offset-2 transition-all"
               aria-label={t('profileAria')}
           >
               <img src={myAvatarUrl} alt={t('profileAria')} className="w-10 h-10 rounded-full object-cover" />
-          </button>
-          <button
-              onClick={onGoHome}
-              className="text-gray-600 p-2 rounded-full hover:bg-gray-100 transition-colors"
-              aria-label={t('homeAria')}
-          >
-              <HomeIcon className="w-7 h-7" />
           </button>
           <button
               onClick={onLogout}

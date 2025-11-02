@@ -38,3 +38,16 @@ export interface EditableProfileData {
   qualification: string;
   country: string;
 }
+
+export interface Notification {
+  id: string;
+  recipientId: string;
+  actorId: string;
+  actorUsername: string;
+  actorAvatarUrl: string;
+  type: 'like' | 'comment' | 'follow';
+  postId?: string;
+  postContentSample?: string;
+  read: boolean;
+  timestamp: Date;
+}

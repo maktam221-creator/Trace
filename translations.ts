@@ -195,10 +195,10 @@ export const translations = {
     fr: 'Résultats de recherche pour :',
   },
   discoverUsers: {
-    ar: 'اكتشف المستخدمين',
-    en: 'Discover Users',
-    es: 'Descubrir usuarios',
-    fr: 'Découvrir des utilisateurs',
+    ar: 'اكتشف',
+    en: 'Discover',
+    es: 'Descubrir',
+    fr: 'Découvrir',
   },
   noResultsFound: {
     ar: 'لم يتم العثور على نتائج',
@@ -509,6 +509,44 @@ export const translations = {
     fr: 'Suppression...',
   },
   
+  // Notifications
+  notifications: {
+    ar: 'الإشعارات',
+    en: 'Notifications',
+    es: 'Notificaciones',
+    fr: 'Notifications',
+  },
+  markAllAsRead: {
+    ar: 'تحديد الكل كمقروء',
+    en: 'Mark all as read',
+    es: 'Marcar todo como leído',
+    fr: 'Marquer tout comme lu',
+  },
+  noNotifications: {
+    ar: 'لا توجد إشعارات بعد',
+    en: 'No notifications yet',
+    es: 'Aún no hay notificaciones',
+    fr: 'Aucune notification pour le moment',
+  },
+  notificationFollow: {
+    ar: 'بدأ بمتابعتك.',
+    en: 'started following you.',
+    es: 'ha comenzado a seguirte.',
+    fr: 'a commencé à vous suivre.',
+  },
+  notificationLike: {
+    ar: 'أعجب بمنشورك:',
+    en: 'liked your post:',
+    es: 'le ha gustado tu publicación:',
+    fr: 'a aimé votre publication :',
+  },
+  notificationComment: {
+    ar: 'علّق على منشورك:',
+    en: 'commented on your post:',
+    es: 'ha comentado en tu publicación:',
+    fr: 'a commenté votre publication :',
+  },
+
   // Toasts / Notifications
   avatarUpdatedSuccess: {
     ar: 'تم تحديث صورة ملفك الشخصي بنجاح!',

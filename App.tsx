@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Post, Comment, Profile, EditableProfileData } from './types';
+import { Post, Comment, Profile, EditableProfileData, Notification } from './types';
 import { generateSamplePosts } from './services/geminiService';
 import Header from './components/Header';
 import PostCard from './components/PostCard';
@@ -15,10 +15,12 @@ import { auth } from './firebase';
 import { onAuthStateChanged, User, signOut, updateProfile, deleteUser } from 'firebase/auth';
 import UserCard from './components/UserCard';
 import FollowSuggestions from './components/FollowSuggestions';
+import NotificationsPage from './components/NotificationsPage';
 import { useTranslations } from './hooks/useTranslations';
 
 const POSTS_STORAGE_KEY = 'aegypt_posts';
 const PROFILES_STORAGE_KEY = 'aegypt_profiles';
+const NOTIFICATIONS_STORAGE_KEY = 'aegypt_notifications';
 const AVATAR_STORAGE_KEY_PREFIX = 'aegypt_avatar_';
 
 const App: React.FC = () => {
@@ -27,10 +29,11 @@ const App: React.FC = () => {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [posts, setPosts] = useState<Post[]>([]);
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showPostForm, setShowPostForm] = useState(false);
-  const [currentView, setCurrentView] = useState<'home' | 'profile' | 'search'>('home');
+  const [currentView, setCurrentView] = useState<'home' | 'profile' | 'search' | 'notifications'>('home');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [myAvatarUrl, setMyAvatarUrl] = useState('');
@@ -54,6 +57,7 @@ const App: React.FC = () => {
     if (!user) {
       setPosts([]);
       setProfiles({});
+      setNotifications([]);
       setMyAvatarUrl('');
       setIsLoading(false);
       return;
@@ -104,6 +108,21 @@ const App: React.FC = () => {
         localStorage.removeItem(PROFILES_STORAGE_KEY);
       }
     }
+    
+    let loadedNotifications: Notification[] = [];
+    const storedNotifications = localStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
+    if (storedNotifications) {
+        try {
+            loadedNotifications = JSON.parse(storedNotifications).map((n: any) => ({
+                ...n,
+                timestamp: new Date(n.timestamp)
+            }));
+        } catch (e) {
+            console.error("Failed to parse notifications from localStorage", e);
+            localStorage.removeItem(NOTIFICATIONS_STORAGE_KEY);
+        }
+    }
+
 
     // Ensure the current user has a profile. This makes new users appear in search.
     if (!loadedProfiles[user.uid]) {
@@ -137,17 +156,11 @@ const App: React.FC = () => {
     const storedAvatar = localStorage.getItem(AVATAR_STORAGE_KEY);
     setMyAvatarUrl(storedAvatar || loadedProfiles[user.uid]?.avatarUrl || `https://picsum.photos/seed/${user.uid}/48`);
 
-    if (Object.keys(loadedProfiles).length > 0) {
-      setPosts(loadedPosts);
-      setProfiles(loadedProfiles);
-      setIsLoading(false);
-    } else {
-      // No posts loaded, and we won't generate any. Just finish loading.
-      setPosts([]);
-      // Keep any profiles that might exist for users with no posts
-      setProfiles(loadedProfiles);
-      setIsLoading(false);
-    }
+    setPosts(loadedPosts);
+    setProfiles(loadedProfiles);
+    setNotifications(loadedNotifications);
+    setIsLoading(false);
+
   }, [user, t]);
 
   useEffect(() => {
@@ -171,9 +184,6 @@ const App: React.FC = () => {
 
 
   useEffect(() => {
-    // Persist posts to localStorage. If the user is logged in and the posts array
-    // becomes empty (e.g., after deleting the last user), remove the item
-    // from storage to prevent stale data from being loaded on the next session.
     if (!isLoading && user) {
       if (posts.length > 0) {
         localStorage.setItem(POSTS_STORAGE_KEY, JSON.stringify(posts));
@@ -184,7 +194,6 @@ const App: React.FC = () => {
   }, [posts, isLoading, user]);
 
   useEffect(() => {
-    // Persist profiles to localStorage. This works similarly to the posts persistence logic.
     if (!isLoading && user) {
       if (Object.keys(profiles).length > 0) {
         localStorage.setItem(PROFILES_STORAGE_KEY, JSON.stringify(profiles));
@@ -196,6 +205,12 @@ const App: React.FC = () => {
   
   useEffect(() => {
     if (!isLoading && user) {
+        localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(notifications));
+    }
+  }, [notifications, isLoading, user]);
+
+  useEffect(() => {
+    if (!isLoading && user) {
       localStorage.setItem(`${AVATAR_STORAGE_KEY_PREFIX}${user.uid}`, myAvatarUrl);
     }
   }, [myAvatarUrl, isLoading, user]);
@@ -205,6 +220,19 @@ const App: React.FC = () => {
     setTimeout(() => setToastMessage(null), 3000);
   };
   
+  const createNotification = (data: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
+      // Avoid notifying users about their own actions
+      if (data.actorId === data.recipientId) return;
+
+      const newNotification: Notification = {
+        ...data,
+        id: Date.now().toString(),
+        timestamp: new Date(),
+        read: false,
+      };
+      setNotifications(current => [newNotification, ...current]);
+  };
+
   const handleUpdateAvatar = (newImageUrl: string) => {
     if (!user) return;
     setMyAvatarUrl(newImageUrl);
@@ -306,9 +334,13 @@ const App: React.FC = () => {
   
   const handleAddComment = (postId: string, commentText: string) => {
     if (!user) return;
+
+    const post = posts.find(p => p.id === postId);
+    if (!post) return;
+
     setPosts(currentPosts => 
-      currentPosts.map(post => {
-        if (post.id === postId) {
+      currentPosts.map(p => {
+        if (p.id === postId) {
           const newComment: Comment = {
             id: Date.now().toString(),
             userId: user.uid,
@@ -318,12 +350,39 @@ const App: React.FC = () => {
           };
           return { ...post, comments: [...(post.comments || []), newComment] };
         }
-        return post;
+        return p;
       })
     );
+    
+    createNotification({
+        recipientId: post.userId,
+        actorId: user.uid,
+        actorUsername: user.displayName || t('user'),
+        actorAvatarUrl: myAvatarUrl,
+        type: 'comment',
+        postId: post.id,
+        postContentSample: post.content.substring(0, 50),
+    });
   };
 
-  const handleLikePost = (postId: string) => setPosts(currentPosts => currentPosts.map(p => p.id === postId ? { ...p, likes: (p.likes || 0) + 1 } : p));
+  const handleLikePost = (postId: string) => {
+    if (!user) return;
+    const post = posts.find(p => p.id === postId);
+    if (!post) return;
+
+    setPosts(currentPosts => currentPosts.map(p => p.id === postId ? { ...p, likes: (p.likes || 0) + 1 } : p));
+    
+    createNotification({
+        recipientId: post.userId,
+        actorId: user.uid,
+        actorUsername: user.displayName || t('user'),
+        actorAvatarUrl: myAvatarUrl,
+        type: 'like',
+        postId: post.id,
+        postContentSample: post.content.substring(0, 50),
+    });
+  };
+
   const handleSharePost = (postId: string) => setPosts(currentPosts => currentPosts.map(p => p.id === postId ? { ...p, shares: (p.shares || 0) + 1 } : p));
 
   const handleToggleFollow = (userIdToToggle: string) => {
@@ -333,7 +392,6 @@ const App: React.FC = () => {
     setProfiles(currentProfiles => {
         const newProfiles = { ...currentProfiles };
 
-        // Get or create profile for current user, ensuring arrays exist
         const myProfile = { 
             ...(newProfiles[myId] || { 
                 username: user.displayName || '', 
@@ -344,7 +402,6 @@ const App: React.FC = () => {
             following: newProfiles[myId]?.following || [],
         };
         
-        // Get or create profile for target user, ensuring arrays exist
         const targetUserPost = posts.find(p => p.userId === userIdToToggle);
         const otherProfile = { 
             ...(newProfiles[userIdToToggle] || { 
@@ -366,6 +423,14 @@ const App: React.FC = () => {
             myProfile.following.push(userIdToToggle);
             otherProfile.followers.push(myId);
             showToast(t('followedUser', { username: otherProfile.username }));
+
+            createNotification({
+                recipientId: userIdToToggle,
+                actorId: myId,
+                actorUsername: myProfile.username,
+                actorAvatarUrl: myAvatarUrl,
+                type: 'follow',
+            });
         }
 
         newProfiles[myId] = myProfile;
@@ -390,31 +455,32 @@ const App: React.FC = () => {
     setCurrentView('home');
     setSelectedUserId(null);
     setSearchQuery('');
-    setSearchPostResults([]);
-    setSearchUserResults([]);
+  };
+
+  const handleGoToNotifications = () => {
+    setCurrentView('notifications');
+  }
+
+  const handleGoToSearch = () => {
+    setCurrentView('search');
+    handleSearch(''); // Show all users by default
   };
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    setCurrentView('search'); // Always switch to search view
+    setCurrentView('search');
     const lowercasedQuery = query.toLowerCase().trim();
 
     if (!lowercasedQuery) {
-      // If query is empty, show all users
-      // FIX: Filter out invalid profile entries that might come from corrupted localStorage data.
-      // This prevents runtime errors from trying to spread a non-object value (e.g., null).
       const allUsers = Object.entries(profiles)
         .filter(([, profile]) => profile && typeof profile === 'object' && typeof profile.username === 'string')
         .map(([userId, profile]) => ({...profile, id: userId}));
       setSearchUserResults(allUsers);
       setSearchPostResults([]);
     } else {
-      // If query is not empty, perform search
       const postResults = posts.filter(p => p.content.toLowerCase().includes(lowercasedQuery) || p.username.toLowerCase().includes(lowercasedQuery));
       setSearchPostResults(postResults);
 
-      // FIX: Filter out invalid profile entries that might come from corrupted localStorage data.
-      // This prevents runtime errors from trying to spread a non-object value (e.g., null).
       const userResults = Object.entries(profiles)
           .filter(([, profile]) => profile && typeof profile === 'object' && typeof profile.username === 'string' && profile.username.toLowerCase().includes(lowercasedQuery))
           .map(([userId, profile]) => ({...profile, id: userId}));
@@ -443,7 +509,6 @@ const App: React.FC = () => {
   
     const userId = userToDelete.uid;
   
-    // Update state. The corresponding useEffect hooks will handle cleaning up localStorage.
     setPosts(currentPosts => {
       const postsWithoutUser = currentPosts.filter(p => p.userId !== userId);
       return postsWithoutUser.map(post => ({
@@ -470,22 +535,46 @@ const App: React.FC = () => {
       return newProfiles;
     });
 
-    // Clean up any other user-specific data from localStorage.
+    setNotifications(current => current.filter(n => n.recipientId !== userId && n.actorId !== userId));
+
     localStorage.removeItem(`${AVATAR_STORAGE_KEY_PREFIX}${userId}`);
     localStorage.removeItem('aegypt_is_new_user');
   
     try {
       await deleteUser(userToDelete);
       showToast(t('deleteAccountSuccess'));
-      // The onAuthStateChanged listener will handle the user state change and redirect.
     } catch (error: any) {
       console.error("Error deleting user from Firebase:", error);
-      await signOut(auth); // Force sign out on error
+      await signOut(auth);
       if (error.code === 'auth/requires-recent-login') {
         showToast(t('deleteAccountRequiresRelogin'));
       } else {
         showToast(t('deleteAccountError'));
       }
+    }
+  };
+
+  const handleMarkAllNotificationsAsRead = () => {
+    if (!user) return;
+    setNotifications(current => current.map(n => n.recipientId === user.uid ? { ...n, read: true } : n));
+  };
+  
+  const handleNotificationClick = (notification: Notification) => {
+    setNotifications(current => 
+      current.map(n => n.id === notification.id ? { ...n, read: true } : n)
+    );
+    
+    // For 'follow', go to the actor's profile.
+    // For 'like'/'comment', go to the post owner's profile. A direct link to the post would be a future enhancement.
+    const targetUserId = notification.type === 'follow' 
+        ? notification.actorId 
+        : posts.find(p => p.id === notification.postId)?.userId;
+
+    if (targetUserId) {
+        handleSelectUser(targetUserId);
+    } else {
+        // Fallback to home if the post/user doesn't exist anymore
+        handleGoHome();
     }
   };
 
@@ -505,6 +594,9 @@ const App: React.FC = () => {
     .map(([id, profile]) => ({ id, ...profile }))
     .sort(() => 0.5 - Math.random()) // Shuffle
     .slice(0, 5); // Take up to 5
+  
+  const myNotifications = notifications.filter(n => n.recipientId === user.uid);
+  const unreadNotificationsCount = myNotifications.filter(n => !n.read).length;
 
   if (showFollowSuggestions && suggestedUsers.length > 0) {
     return (
@@ -526,6 +618,10 @@ const App: React.FC = () => {
         onSearch={handleSearch}
         onLogout={handleLogout}
         myAvatarUrl={myAvatarUrl}
+        notifications={myNotifications}
+        unreadCount={unreadNotificationsCount}
+        onNotificationClick={handleNotificationClick}
+        onMarkAllRead={handleMarkAllNotificationsAsRead}
       />
       <main className="container mx-auto max-w-2xl px-4 py-8 pb-24">
         {isLoading && <LoadingSpinner />}
@@ -548,6 +644,14 @@ const App: React.FC = () => {
                 </div>
             )}
           </>
+        )}
+
+        {!isLoading && !error && currentView === 'notifications' && (
+            <NotificationsPage 
+                notifications={myNotifications}
+                onNotificationClick={handleNotificationClick}
+                onMarkAllRead={handleMarkAllNotificationsAsRead}
+            />
         )}
 
         {!isLoading && !error && currentView === 'search' && (() => {
@@ -607,10 +711,17 @@ const App: React.FC = () => {
       </main>
       
       {!isLoading && !error && (
-        <BottomNavBar onGoHome={handleGoHome} onNewPost={() => setShowPostForm(true)} onGoToProfile={handleGoToMyProfile} />
+        <BottomNavBar 
+          currentView={currentView}
+          onGoHome={handleGoHome} 
+          onNewPost={() => setShowPostForm(true)} 
+          onGoToProfile={handleGoToMyProfile}
+          onGoToNotifications={handleGoToNotifications}
+          onGoToSearch={handleGoToSearch}
+          unreadNotificationsCount={unreadNotificationsCount}
+        />
       )}
       
-      {/* FIX: Corrected typo from `showPost-form` to `showPostForm` */}
       {showPostForm && <PostForm onAddPost={handleAddPost} onClose={() => setShowPostForm(false)} onShowToast={showToast} />}
 
       <Toast message={toastMessage} />
