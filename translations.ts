@@ -187,6 +187,38 @@ export const translations = {
     fr: 'Soyez le premier à partager vos pensées et à lancer une conversation !',
   },
 
+  // Home Page (Feed)
+  forYou: {
+    ar: 'لك',
+    en: 'For You',
+    es: 'Para ti',
+    fr: 'Pour vous',
+  },
+  followingFeed: {
+    ar: 'متابعون',
+    en: 'Following',
+    es: 'Siguiendo',
+    fr: 'Abonnements',
+  },
+  noPostsInFollowingFeedTitle: {
+    ar: 'صفحة المتابَعة فارغة',
+    en: 'Following Feed is Empty',
+    es: 'La sección de Siguiendo está vacía',
+    fr: 'Le fil d\'actualité des abonnements est vide',
+  },
+  noPostsInFollowingFeedSubtitle: {
+    ar: 'ستظهر هنا منشورات الأشخاص الذين تتابعهم.',
+    en: 'Posts from people you follow will appear here.',
+    es: 'Las publicaciones de la gente que sigues aparecerán aquí.',
+    fr: 'Les publications des personnes que vous suivez apparaîtront ici.',
+  },
+  discoverPosts: {
+    ar: 'اكتشف المستخدمين',
+    en: 'Discover Users',
+    es: 'Descubrir Usuarios',
+    fr: 'Découvrir les utilisateurs',
+  },
+
   // Search Page
   searchResultsFor: {
     ar: 'نتائج البحث عن:',
