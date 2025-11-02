@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
-import { PhotoIcon, XCircleIcon, LoadingSpinnerIcon } from './Icons';
+import { PhotoIcon, XCircleIcon, LoadingSpinnerIcon, SparklesIcon } from './Icons';
 import { uploadImage } from '../services/imageService';
 import { useTranslations } from '../hooks/useTranslations';
+import { generatePostContent } from '../services/geminiService';
 
 interface PostFormProps {
   onAddPost: (content: string, imageUrl: string | null) => void;
@@ -15,6 +16,7 @@ const PostForm: React.FC<PostFormProps> = ({ onAddPost, onClose, onShowToast }) 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -34,6 +36,21 @@ const PostForm: React.FC<PostFormProps> = ({ onAddPost, onClose, onShowToast }) 
     setImagePreview(null);
     if(fileInputRef.current) {
         fileInputRef.current.value = "";
+    }
+  };
+
+  const handleGenerateContent = async () => {
+    const topic = window.prompt(t('aiTopicPrompt'));
+    if (!topic || !topic.trim()) return;
+
+    setIsGenerating(true);
+    try {
+      const generatedContent = await generatePostContent(topic);
+      setContent(generatedContent);
+    } catch (error: any) {
+      onShowToast(error.message || t('aiGenerationFailed'));
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -98,15 +115,26 @@ const PostForm: React.FC<PostFormProps> = ({ onAddPost, onClose, onShowToast }) 
             </div>
 
           <div className="mt-4 flex justify-between items-center">
-             <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center space-x-2 rtl:space-x-reverse p-2 text-blue-600 rounded-lg"
-              disabled={isUploading}
-            >
-                <PhotoIcon className="w-6 h-6" />
-                <span className="font-semibold">{t('addImage')}</span>
-            </button>
+             <div className="flex items-center">
+                <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-2 text-blue-600 rounded-full hover:bg-blue-50 disabled:text-gray-400"
+                    disabled={isUploading || isGenerating}
+                    aria-label={t('addImage')}
+                >
+                    <PhotoIcon className="w-6 h-6" />
+                </button>
+                <button
+                    type="button"
+                    onClick={handleGenerateContent}
+                    className="p-2 text-purple-600 rounded-full hover:bg-purple-50 disabled:text-gray-400"
+                    disabled={isUploading || isGenerating}
+                    aria-label={t('suggestWithAi')}
+                >
+                    {isGenerating ? <LoadingSpinnerIcon className="w-6 h-6 text-purple-600" /> : <SparklesIcon className="w-6 h-6" />}
+                </button>
+             </div>
             <input 
                 type="file"
                 ref={fileInputRef}
@@ -120,13 +148,13 @@ const PostForm: React.FC<PostFormProps> = ({ onAddPost, onClose, onShowToast }) 
                 type="button"
                 onClick={onClose}
                 className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg"
-                disabled={isUploading}
+                disabled={isUploading || isGenerating}
                 >
                 {t('cancel')}
                 </button>
                 <button
                     type="submit"
-                    disabled={(!content.trim() && !imagePreview) || isUploading}
+                    disabled={(!content.trim() && !imagePreview) || isUploading || isGenerating}
                     className="px-6 py-2 bg-blue-600 text-white rounded-lg disabled:bg-blue-300 disabled:cursor-not-allowed w-24 flex justify-center items-center"
                 >
                     {isUploading ? <LoadingSpinnerIcon className="w-5 h-5" /> : t('publish')}

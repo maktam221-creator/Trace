@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, memo } from 'react';
 import { Post, EditableProfileData, Profile } from '../types';
 import PostCard from './PostCard';
 import { ArrowRightIcon, CameraIcon, PencilIcon } from './Icons';
@@ -11,6 +11,7 @@ interface ProfilePageProps {
   myUserId: string;
   myDisplayName: string;
   posts: Post[];
+  profiles: Record<string, Profile>;
   userProfile?: Profile;
   onSelectUser: (userId:string) => void;
   onBack: () => void;
@@ -31,6 +32,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
     myUserId, 
     myDisplayName,
     posts, 
+    profiles,
     userProfile,
     onSelectUser, 
     onBack, 
@@ -269,6 +271,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
                       key={post.id} 
                       post={post} 
                       myUserId={myUserId}
+                      profiles={profiles}
                       onSelectUser={onSelectUser}
                       onAddComment={onAddComment}
                       onShowToast={onShowToast}
@@ -287,4 +290,4 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
   );
 };
 
-export default ProfilePage;
+export default memo(ProfilePage);

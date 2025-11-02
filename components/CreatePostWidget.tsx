@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
-import { PhotoIcon, XCircleIcon, LoadingSpinnerIcon } from './Icons';
+import { PhotoIcon, XCircleIcon, LoadingSpinnerIcon, SparklesIcon } from './Icons';
 import { uploadImage } from '../services/imageService';
 import { useTranslations } from '../hooks/useTranslations';
+import { generatePostContent } from '../services/geminiService';
 
 interface CreatePostWidgetProps {
   onAddPost: (content: string, imageUrl: string | null) => void;
@@ -15,6 +16,7 @@ const CreatePostWidget: React.FC<CreatePostWidgetProps> = ({ onAddPost, myAvatar
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -34,6 +36,21 @@ const CreatePostWidget: React.FC<CreatePostWidgetProps> = ({ onAddPost, myAvatar
     setImagePreview(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
+    }
+  };
+
+  const handleGenerateContent = async () => {
+    const topic = window.prompt(t('aiTopicPrompt'));
+    if (!topic || !topic.trim()) return;
+
+    setIsGenerating(true);
+    try {
+      const generatedContent = await generatePostContent(topic);
+      setContent(generatedContent);
+    } catch (error: any) {
+      onShowToast(error.message || t('aiGenerationFailed'));
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -77,15 +94,10 @@ const CreatePostWidget: React.FC<CreatePostWidgetProps> = ({ onAddPost, myAvatar
             className="w-12 h-12 rounded-full object-cover"
           />
           <textarea
-            className="w-full min-h-[50px] p-3 border border-gray-200 rounded-lg focus:border-blue-500 resize-none"
+            className="w-full h-28 p-3 border border-gray-200 rounded-lg focus:border-blue-500 resize-none"
             placeholder={t('postPlaceholder')}
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            onInput={(e) => {
-              const target = e.target as HTMLTextAreaElement;
-              target.style.height = 'auto';
-              target.style.height = `${target.scrollHeight}px`;
-            }}
           ></textarea>
         </div>
 
@@ -109,15 +121,26 @@ const CreatePostWidget: React.FC<CreatePostWidgetProps> = ({ onAddPost, myAvatar
 
 
         <div className="mt-4 ms-16 flex justify-between items-center">
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center space-x-2 rtl:space-x-reverse p-2 text-blue-600 rounded-lg"
-            disabled={isUploading}
-          >
-            <PhotoIcon className="w-6 h-6" />
-            <span className="font-semibold">{t('addImage')}</span>
-          </button>
+          <div className="flex items-center">
+            <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center space-x-2 rtl:space-x-reverse p-2 text-blue-600 rounded-lg hover:bg-blue-50 disabled:text-gray-400"
+                disabled={isUploading || isGenerating}
+                >
+                <PhotoIcon className="w-6 h-6" />
+                <span className="font-semibold">{t('addImage')}</span>
+            </button>
+            <button
+                type="button"
+                onClick={handleGenerateContent}
+                className="flex items-center space-x-2 rtl:space-x-reverse p-2 text-purple-600 rounded-lg hover:bg-purple-50 disabled:text-gray-400"
+                disabled={isUploading || isGenerating}
+            >
+                {isGenerating ? <LoadingSpinnerIcon className="w-6 h-6 text-purple-600" /> : <SparklesIcon className="w-6 h-6" />}
+                <span className="font-semibold">{t('suggestWithAi')}</span>
+            </button>
+          </div>
           <input
             type="file"
             ref={fileInputRef}
@@ -128,7 +151,7 @@ const CreatePostWidget: React.FC<CreatePostWidgetProps> = ({ onAddPost, myAvatar
 
           <button
             type="submit"
-            disabled={(!content.trim() && !imagePreview) || isUploading}
+            disabled={(!content.trim() && !imagePreview) || isUploading || isGenerating}
             className="px-8 py-2 bg-blue-600 text-white font-semibold rounded-full disabled:bg-blue-300 disabled:cursor-not-allowed w-28 flex justify-center items-center"
           >
             {isUploading ? <LoadingSpinnerIcon className="w-5 h-5" /> : t('publish')}

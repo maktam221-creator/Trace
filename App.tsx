@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Post, Comment, Profile, EditableProfileData, Notification } from './types';
 import Header from './components/Header';
 import PostCard from './components/PostCard';
@@ -10,425 +10,98 @@ import NotificationsPage from './components/NotificationsPage';
 import Toast from './components/Toast';
 import CreatePostWidget from './components/CreatePostWidget';
 import AuthPage from './components/AuthPage';
+import FollowSuggestions from './components/FollowSuggestions';
 import { auth } from './firebase';
-import { onAuthStateChanged, User, signOut, updateProfile } from 'firebase/auth';
+import { onAuthStateChanged, User, signOut } from 'firebase/auth';
 import { useTranslations } from './hooks/useTranslations';
-
-const POSTS_STORAGE_KEY = 'aegypt_posts';
-const PROFILES_STORAGE_KEY = 'aegypt_profiles';
-const NOTIFICATIONS_STORAGE_KEY = 'aegypt_notifications';
-const AVATAR_STORAGE_KEY_PREFIX = 'aegypt_avatar_';
+import { useAppData } from './hooks/useAppData';
 
 const App: React.FC = () => {
   const { t } = useTranslations();
   const [user, setUser] = useState<User | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [profiles, setProfiles] = useState<Record<string, Profile>>({});
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [showPostForm, setShowPostForm] = useState(false);
   const [currentView, setCurrentView] = useState<'home' | 'profile' | 'notifications'>('home');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [myAvatarUrl, setMyAvatarUrl] = useState('');
-
+  const [isNewUser, setIsNewUser] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setIsAuthLoading(false);
+      if (currentUser) {
+        const isNew = localStorage.getItem('aegypt_is_new_user') === 'true';
+        setIsNewUser(isNew);
+      } else {
+        setIsNewUser(false);
+      }
     });
     return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    if (isAuthLoading) {
-        return;
-    }
+  const {
+    posts,
+    profiles,
+    notifications,
+    myAvatarUrl,
+    isLoading: isDataLoading,
+    suggestedUsers,
+    handleAddPost: onAddPost,
+    handleAddComment,
+    handleLikePost,
+    handleSharePost,
+    handleToggleFollow,
+    handleUpdateAvatar,
+    handleUpdateProfile,
+    handleMarkAllAsRead,
+    handleNotificationClickLogic,
+  } = useAppData(user);
 
-    if (!user) {
-      setPosts([]);
-      setProfiles({});
-      setNotifications([]);
-      setMyAvatarUrl('');
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(true);
-    
-    // Heuristic for identifying Firebase UIDs. They are typically alphanumeric strings of varying length.
-    const firebaseUidRegex = /^[a-zA-Z0-9]+$/;
-
-    const AVATAR_STORAGE_KEY = `${AVATAR_STORAGE_KEY_PREFIX}${user.uid}`;
-    const NOTIFICATIONS_KEY = `${NOTIFICATIONS_STORAGE_KEY}_${user.uid}`;
-
-    let loadedPosts: Post[] = [];
-    const storedPosts = localStorage.getItem(POSTS_STORAGE_KEY);
-    if (storedPosts) {
-      try {
-        const parsedPosts = JSON.parse(storedPosts);
-        // Filter out posts from non-Firebase UID authors (i.e., old AI-generated posts)
-        loadedPosts = parsedPosts
-          .filter((post: any) => post && typeof post.userId === 'string' && firebaseUidRegex.test(post.userId))
-          .map((post: any) => ({
-            ...post,
-            timestamp: new Date(post.timestamp),
-            comments: (post.comments || []).map((comment: any) => ({
-              ...comment,
-              timestamp: new Date(comment.timestamp),
-            })),
-          }));
-      } catch (e) {
-        console.error("Failed to parse posts from localStorage", e);
-        localStorage.removeItem(POSTS_STORAGE_KEY);
-      }
-    }
-
-    const storedProfiles = localStorage.getItem(PROFILES_STORAGE_KEY);
-    let loadedProfiles: Record<string, Profile> = {};
-    if (storedProfiles) {
-      try {
-        const parsedProfiles = JSON.parse(storedProfiles);
-        // Filter out profiles from non-Firebase UIDs (i.e., old AI-generated users)
-        Object.keys(parsedProfiles).forEach(userId => {
-          if (firebaseUidRegex.test(userId)) {
-            loadedProfiles[userId] = parsedProfiles[userId];
-          }
-        });
-      } catch (e) {
-        console.error("Failed to parse profiles from localStorage", e);
-        localStorage.removeItem(PROFILES_STORAGE_KEY);
-      }
-    }
-
-    const storedNotifications = localStorage.getItem(NOTIFICATIONS_KEY);
-    let loadedNotifications: Notification[] = [];
-    if (storedNotifications) {
-      try {
-        loadedNotifications = JSON.parse(storedNotifications).map((n: any) => ({
-          ...n,
-          timestamp: new Date(n.timestamp)
-        }));
-      } catch(e) {
-        console.error("Failed to parse notifications from localStorage", e);
-        localStorage.removeItem(NOTIFICATIONS_KEY);
-      }
-    }
-    
-    // Ensure the current user has a profile. This makes new users appear in search.
-    if (!loadedProfiles[user.uid]) {
-      loadedProfiles[user.uid] = {
-        username: user.displayName || user.email?.split('@')[0] || t('user'),
-        avatarUrl: `https://picsum.photos/seed/${user.uid}/48`,
-        followers: [],
-        following: [],
-      };
-    }
-
-    // Re-populate profiles from loaded posts to ensure all posting users are discoverable.
-    loadedPosts.forEach(post => {
-      if (!loadedProfiles[post.userId]) {
-        loadedProfiles[post.userId] = {
-          username: post.username,
-          avatarUrl: post.avatarUrl || `https://picsum.photos/seed/${post.userId}/48`,
-          followers: [],
-          following: [],
-        };
-      }
-    });
-
-    const storedAvatar = localStorage.getItem(AVATAR_STORAGE_KEY);
-    setMyAvatarUrl(storedAvatar || loadedProfiles[user.uid]?.avatarUrl || `https://picsum.photos/seed/${user.uid}/48`);
-
-    setPosts(loadedPosts);
-    setProfiles(loadedProfiles);
-    setNotifications(loadedNotifications);
-    
-    setIsLoading(false);
-
-  }, [user, isAuthLoading, t]);
-
-  useEffect(() => {
-    if (!isLoading && user) {
-      if (posts.length > 0) {
-        localStorage.setItem(POSTS_STORAGE_KEY, JSON.stringify(posts));
-      } else {
-        localStorage.removeItem(POSTS_STORAGE_KEY);
-      }
-    }
-  }, [posts, isLoading, user]);
-
-  useEffect(() => {
-    if (!isLoading && user) {
-      if (Object.keys(profiles).length > 0) {
-        localStorage.setItem(PROFILES_STORAGE_KEY, JSON.stringify(profiles));
-      } else {
-        localStorage.removeItem(PROFILES_STORAGE_KEY);
-      }
-    }
-  }, [profiles, isLoading, user]);
-  
-  useEffect(() => {
-    if (!isLoading && user) {
-      localStorage.setItem(`${AVATAR_STORAGE_KEY_PREFIX}${user.uid}`, myAvatarUrl);
-    }
-  }, [myAvatarUrl, isLoading, user]);
-
-  useEffect(() => {
-    if (!isLoading && user) {
-      localStorage.setItem(`${NOTIFICATIONS_STORAGE_KEY}_${user.uid}`, JSON.stringify(notifications));
-    }
-  }, [notifications, isLoading, user]);
-
-  const showToast = (message: string) => {
+  const showToast = useCallback((message: string) => {
     setToastMessage(message);
     setTimeout(() => setToastMessage(null), 3000);
-  };
+  }, []);
 
-  const createNotification = (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
-    const newNotification: Notification = {
-      ...notification,
-      id: Date.now().toString(),
-      timestamp: new Date(),
-      read: false,
-    };
-    setNotifications(current => [newNotification, ...current]);
-  };
-
-  const handleUpdateAvatar = (newImageUrl: string) => {
-    if (!user) return;
-    setMyAvatarUrl(newImageUrl);
-    
-    setProfiles(currentProfiles => ({
-        ...currentProfiles,
-        [user.uid]: {
-            ...(currentProfiles[user.uid] || { 
-                username: user.displayName || '', 
-            }),
-            avatarUrl: newImageUrl,
-        }
-    }));
-
-    setPosts(currentPosts => 
-        currentPosts.map(post => 
-            post.userId === user.uid 
-            ? { ...post, avatarUrl: newImageUrl }
-            : post
-        )
-    );
-    showToast(t('avatarUpdatedSuccess'));
-  };
-
-  const handleUpdateProfile = async (profileData: EditableProfileData) => {
-    if (!user) return Promise.reject("No user");
-
-    const { username } = profileData;
-
-    try {
-        if (username !== user.displayName) {
-            await updateProfile(user, {
-                displayName: username
-            });
-        }
-        
-        setProfiles(currentProfiles => ({
-            ...currentProfiles,
-            [user.uid]: {
-                ...(currentProfiles[user.uid] || { avatarUrl: myAvatarUrl }),
-                username,
-            }
-        }));
-        
-        setPosts(currentPosts => 
-            currentPosts.map(post => {
-                const updatedPost = post.userId === user.uid
-                    ? { ...post, username }
-                    : post;
-                
-                const updatedComments = (updatedPost.comments || []).map(comment =>
-                    comment.userId === user.uid
-                    ? { ...comment, username: username }
-                    : comment
-                );
-
-                return { ...updatedPost, comments: updatedComments };
-            })
-        );
-        
-        showToast(t('profileUpdatedSuccess'));
-    } catch (error) {
-        console.error("Error updating profile: ", error);
-        showToast(t('profileUpdateError'));
-        throw error; // Re-throw to be caught in ProfilePage if needed for UI state
-    }
-  };
-
-
-  const handleAddPost = (content: string, imageUrl: string | null) => {
-    if (!user) return;
-
-    const newPost: Post = {
-      id: Date.now().toString(),
-      userId: user.uid,
-      username: user.displayName || user.email?.split('@')[0] || t('user'),
-      avatarUrl: myAvatarUrl,
-      content,
-      timestamp: new Date(),
-      comments: [],
-      likes: 0,
-      shares: 0,
-      ...(imageUrl && { imageUrl }),
-    };
-    setPosts([newPost, ...posts]);
+  const handleAddPost = useCallback((content: string, imageUrl: string | null) => {
+    onAddPost(content, imageUrl);
     setShowPostForm(false);
     showToast(t('postAddedSuccess'));
-  };
-  
-  const handleAddComment = (postId: string, commentText: string) => {
-    if (!user) return;
+  }, [onAddPost, showToast, t]);
 
-    const post = posts.find(p => p.id === postId);
-    if (!post) return;
-    
-    if (post.userId !== user.uid) {
-        createNotification({
-            type: 'comment',
-            actorId: user.uid,
-            actorUsername: user.displayName || t('user'),
-            actorAvatarUrl: myAvatarUrl,
-            postId: post.id,
-            postContentSample: post.content.substring(0, 50),
-        });
-    }
-
-    setPosts(currentPosts => 
-      currentPosts.map(p => {
-        if (p.id === postId) {
-          const newComment: Comment = {
-            id: Date.now().toString(),
-            userId: user.uid,
-            username: user.displayName || user.email?.split('@')[0] || t('user'),
-            text: commentText,
-            timestamp: new Date(),
-          };
-          return { ...post, comments: [...(post.comments || []), newComment] };
-        }
-        return p;
-      })
-    );
-  };
-
-  const handleLikePost = (postId: string) => {
-    if (!user) return;
-    const post = posts.find(p => p.id === postId);
-    if (!post) return;
-    
-    if (post.userId !== user.uid) {
-      createNotification({
-        type: 'like',
-        actorId: user.uid,
-        actorUsername: user.displayName || t('user'),
-        actorAvatarUrl: myAvatarUrl,
-        postId: post.id,
-        postContentSample: post.content.substring(0, 50),
-      });
-    }
-
-    setPosts(currentPosts => currentPosts.map(p => p.id === postId ? { ...p, likes: (p.likes || 0) + 1 } : p));
-  };
-
-  const handleSharePost = (postId: string) => setPosts(currentPosts => currentPosts.map(p => p.id === postId ? { ...p, shares: (p.shares || 0) + 1 } : p));
-
-  const handleToggleFollow = (userIdToToggle: string) => {
-    if (!user) return;
-    const myId = user.uid;
-
-    setProfiles(currentProfiles => {
-        const newProfiles = { ...currentProfiles };
-
-        const myProfile = { 
-            ...(newProfiles[myId] || { 
-                username: user.displayName || '', 
-                avatarUrl: myAvatarUrl, 
-            }),
-            followers: newProfiles[myId]?.followers || [],
-            following: newProfiles[myId]?.following || [],
-        };
-        
-        const targetUserPost = posts.find(p => p.userId === userIdToToggle);
-        const otherProfile = { 
-            ...(newProfiles[userIdToToggle] || { 
-                username: targetUserPost?.username || t('user'), 
-                avatarUrl: targetUserPost?.avatarUrl || `https://picsum.photos/seed/${userIdToToggle}/48`,
-            }),
-            followers: newProfiles[userIdToToggle]?.followers || [],
-            following: newProfiles[userIdToToggle]?.following || [],
-        };
-
-        const isFollowing = myProfile.following.includes(userIdToToggle);
-
-        if (isFollowing) {
-            myProfile.following = myProfile.following.filter(id => id !== userIdToToggle);
-            otherProfile.followers = otherProfile.followers.filter(id => id !== myId);
-            showToast(t('unfollowedUser', { username: otherProfile.username }));
-        } else {
-            myProfile.following.push(userIdToToggle);
-            otherProfile.followers.push(myId);
-            showToast(t('followedUser', { username: otherProfile.username }));
-            createNotification({
-                type: 'follow',
-                actorId: myId,
-                actorUsername: myProfile.username,
-                actorAvatarUrl: myProfile.avatarUrl,
-            });
-        }
-
-        newProfiles[myId] = myProfile;
-        newProfiles[userIdToToggle] = otherProfile;
-
-        return newProfiles;
-    });
-  };
-
-
-  const handleSelectUser = (userId: string) => {
+  const handleSelectUser = useCallback((userId: string) => {
     setSelectedUserId(userId);
     setCurrentView('profile');
-  };
-  
-  const handleGoToMyProfile = () => {
+  }, []);
+
+  const handleGoToMyProfile = useCallback(() => {
     if (!user) return;
     handleSelectUser(user.uid);
-  };
+  }, [user, handleSelectUser]);
 
-  const handleGoHome = () => {
+  const handleGoHome = useCallback(() => {
     setCurrentView('home');
     setSelectedUserId(null);
-  };
-  
-  const handleGoToNotifications = () => {
+  }, []);
+
+  const handleGoToNotifications = useCallback(() => {
     setCurrentView('notifications');
     setSelectedUserId(null);
-  };
-  
-  const handleMarkAllAsRead = () => {
-    setNotifications(current => current.map(n => ({ ...n, read: true })));
-  };
+  }, []);
 
-  const handleNotificationClick = (notification: Notification) => {
-    setNotifications(current => current.map(n => n.id === notification.id ? { ...n, read: true } : n));
-    if (notification.type === 'follow') {
-      handleSelectUser(notification.actorId);
+  const handleNotificationClick = useCallback((notification: Notification) => {
+    const navigationAction = handleNotificationClickLogic(notification);
+    if (navigationAction.type === 'profile') {
+      handleSelectUser(navigationAction.userId);
     } else {
-      // For now, other notifications just go to the home feed.
-      // A future improvement could be navigating to the specific post.
       handleGoHome();
     }
-  };
-
+  }, [handleNotificationClickLogic, handleSelectUser, handleGoHome]);
+  
+  const handleContinueFromSuggestions = useCallback(() => {
+    localStorage.removeItem('aegypt_is_new_user');
+    setIsNewUser(false);
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -440,23 +113,34 @@ const App: React.FC = () => {
     }
   };
 
-  if (isAuthLoading || isLoading) {
+  if (isAuthLoading || isDataLoading) {
     return <div className="min-h-screen flex items-center justify-center"><LoadingSpinner /></div>;
   }
-  
+
   if (!user) {
     return <AuthPage />;
   }
-  
+
+  if (isNewUser && suggestedUsers.length > 0) {
+    return (
+        <FollowSuggestions 
+            suggestedUsers={suggestedUsers}
+            following={new Set(profiles[user.uid]?.following || [])}
+            onToggleFollow={handleToggleFollow}
+            onContinue={handleContinueFromSuggestions}
+        />
+    );
+  }
+
   const myCurrentProfile = profiles[user.uid];
   const followingSet = new Set(myCurrentProfile?.following || []);
   const unreadNotificationsCount = notifications.filter(n => !n.read).length;
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 font-sans">
-      <Header 
+      <Header
         onGoHome={handleGoHome}
-        onGoToProfile={handleGoToMyProfile} 
+        onGoToProfile={handleGoToMyProfile}
         onLogout={handleLogout}
         myAvatarUrl={myAvatarUrl}
         unreadCount={unreadNotificationsCount}
@@ -465,49 +149,47 @@ const App: React.FC = () => {
         onMarkAllRead={handleMarkAllAsRead}
       />
       <main className="container mx-auto max-w-2xl px-4 py-8 pb-24">
-        {error && <div className="text-center text-red-500 bg-red-100 p-4 rounded-lg">{error}</div>}
-        
         {currentView === 'home' && (
           <>
             <CreatePostWidget onAddPost={handleAddPost} myAvatarUrl={myAvatarUrl} onShowToast={showToast} />
             {posts.length > 0 ? (
               <div className="space-y-6">
                 {posts.map((post) => (
-                  <PostCard key={post.id} post={post} myUserId={user.uid} onSelectUser={handleSelectUser} onAddComment={handleAddComment} onShowToast={showToast} onLikePost={handleLikePost} onSharePost={handleSharePost} myAvatarUrl={myAvatarUrl} />
+                  <PostCard key={post.id} post={post} myUserId={user.uid} profiles={profiles} onSelectUser={handleSelectUser} onAddComment={handleAddComment} onShowToast={showToast} onLikePost={handleLikePost} onSharePost={handleSharePost} myAvatarUrl={myAvatarUrl} />
                 ))}
               </div>
             ) : (
-                <div className="text-center text-gray-500 py-16 mt-6 bg-white border border-gray-200 rounded-xl shadow-sm">
-                    <h3 className="text-2xl font-bold text-gray-800">{t('welcomeTitle')}</h3>
-                    <p className="mt-2">{t('welcomeSubtitle')}</p>
-                    <p className="mt-1">{t('welcomeCallToAction')}</p>
-                </div>
+              <div className="text-center text-gray-500 py-16 mt-6 bg-white border border-gray-200 rounded-xl shadow-sm">
+                <h3 className="text-2xl font-bold text-gray-800">{t('welcomeTitle')}</h3>
+                <p className="mt-2">{t('welcomeSubtitle')}</p>
+                <p className="mt-1">{t('welcomeCallToAction')}</p>
+              </div>
             )}
           </>
         )}
 
         {currentView === 'profile' && selectedUserId && (
-          <ProfilePage userId={selectedUserId} myUserId={user.uid} myDisplayName={user.displayName || ''} posts={posts} userProfile={profiles[selectedUserId]} onSelectUser={handleSelectUser} onBack={handleGoHome} onAddComment={handleAddComment} onShowToast={showToast} onLikePost={handleLikePost} onSharePost={handleSharePost} following={followingSet} onToggleFollow={handleToggleFollow} onAddPost={handleAddPost} myAvatarUrl={myAvatarUrl} onUpdateAvatar={handleUpdateAvatar} onUpdateProfile={handleUpdateProfile} />
+          <ProfilePage userId={selectedUserId} myUserId={user.uid} myDisplayName={user.displayName || ''} posts={posts} profiles={profiles} userProfile={profiles[selectedUserId]} onSelectUser={handleSelectUser} onBack={handleGoHome} onAddComment={handleAddComment} onShowToast={showToast} onLikePost={handleLikePost} onSharePost={handleSharePost} following={followingSet} onToggleFollow={handleToggleFollow} onAddPost={handleAddPost} myAvatarUrl={myAvatarUrl} onUpdateAvatar={handleUpdateAvatar} onUpdateProfile={handleUpdateProfile} />
         )}
 
         {currentView === 'notifications' && (
-            <NotificationsPage
-                notifications={notifications}
-                onNotificationClick={handleNotificationClick}
-                onMarkAllRead={handleMarkAllAsRead}
-            />
+          <NotificationsPage
+            notifications={notifications}
+            onNotificationClick={handleNotificationClick}
+            onMarkAllRead={handleMarkAllAsRead}
+          />
         )}
       </main>
-      
-      <BottomNavBar 
+
+      <BottomNavBar
         currentView={currentView}
-        onGoHome={handleGoHome} 
-        onNewPost={() => setShowPostForm(true)} 
+        onGoHome={handleGoHome}
+        onNewPost={() => setShowPostForm(true)}
         onGoToProfile={handleGoToMyProfile}
         onGoToNotifications={handleGoToNotifications}
         unreadNotificationsCount={unreadNotificationsCount}
       />
-      
+
       {showPostForm && <PostForm onAddPost={handleAddPost} onClose={() => setShowPostForm(false)} onShowToast={showToast} />}
 
       <Toast message={toastMessage} />

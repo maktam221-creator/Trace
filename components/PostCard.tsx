@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Post } from '../types';
+import React, { useState, memo } from 'react';
+import { Post, Profile } from '../types';
 import { HeartIcon, ChatBubbleOvalLeftIcon, ArrowUpOnSquareIcon } from './Icons';
 import CommentSection from './CommentSection';
 import { useTranslations } from '../hooks/useTranslations';
@@ -8,6 +8,7 @@ import { formatTimeAgo } from '../utils/time';
 interface PostCardProps {
   post: Post;
   myUserId: string;
+  profiles: Record<string, Profile>;
   onSelectUser: (userId: string) => void;
   onAddComment: (postId: string, commentText: string) => void;
   onShowToast: (message: string) => void;
@@ -16,7 +17,7 @@ interface PostCardProps {
   myAvatarUrl: string;
 }
 
-const PostCard: React.FC<PostCardProps> = ({ post, myUserId, onSelectUser, onAddComment, onShowToast, onLikePost, onSharePost, myAvatarUrl }) => {
+const PostCard: React.FC<PostCardProps> = ({ post, myUserId, profiles, onSelectUser, onAddComment, onShowToast, onLikePost, onSharePost, myAvatarUrl }) => {
   const { t } = useTranslations();
   const [showComments, setShowComments] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
@@ -125,10 +126,11 @@ const PostCard: React.FC<PostCardProps> = ({ post, myUserId, onSelectUser, onAdd
             onAddComment={handleAddComment}
             myUserId={myUserId}
             myAvatarUrl={myAvatarUrl}
+            profiles={profiles}
         />
       )}
     </div>
   );
 };
 
-export default PostCard;
+export default memo(PostCard);

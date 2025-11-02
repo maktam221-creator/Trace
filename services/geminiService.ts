@@ -1,9 +1,29 @@
+import { GoogleGenAI } from "@google/genai";
 
-// The generation of sample posts has been disabled to ensure all content
-// originates from real, authenticated users. This file is kept for structure
-// but the core functionality has been removed.
+/**
+ * Generates post content using the Gemini API based on a given topic.
+ * @param topic The topic for the post.
+ * @returns A promise that resolves to the generated post content string.
+ */
+export async function generatePostContent(topic: string): Promise<string> {
+  try {
+    // Ensure API_KEY is available. The environment variable is expected to be set.
+    if (!process.env.API_KEY) {
+      throw new Error("API_KEY environment variable not set.");
+    }
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-export async function generateSamplePosts(): Promise<Omit<import('../types').Post, 'id' | 'timestamp'>[]> {
-  // Always return an empty array to prevent fake posts from being generated.
-  return [];
+    const prompt = `اكتب منشورًا قصيرًا وجذابًا على وسائل التواصل الاجتماعي حول "${topic}". يجب أن يكون المنشور مناسبًا لجمهور عام في مصر. اجعله أقل من 280 حرفًا. لا تقم بتضمين أي هاشتاجات.`;
+    
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+    });
+    
+    return response.text.trim();
+  } catch (error) {
+    console.error("Error generating post content:", error);
+    // Provide a user-facing error message in Arabic.
+    throw new Error("فشل إنشاء المحتوى.");
+  }
 }

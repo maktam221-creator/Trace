@@ -330,6 +330,24 @@ export const translations = {
     es: 'Eliminar imagen',
     fr: 'Supprimer l\'image',
   },
+  suggestWithAi: {
+    ar: 'اقتراح بالذكاء الاصطناعي',
+    en: 'Suggest with AI',
+    es: 'Sugerir con IA',
+    fr: 'Suggérer avec l\'IA'
+  },
+  aiTopicPrompt: {
+    ar: 'ما هو موضوع المنشور؟',
+    en: 'What is the post topic?',
+    es: '¿Cuál es el tema de la publicación?',
+    fr: 'Quel est le sujet de la publication ?'
+  },
+  aiGenerationFailed: {
+    ar: 'فشل إنشاء المحتوى.',
+    en: 'Failed to generate content.',
+    es: 'Error al generar contenido.',
+    fr: 'Échec de la génération de contenu.'
+  },
   
   // Comment Section
   addCommentPlaceholder: {
