@@ -12,7 +12,7 @@ const Header: React.FC<HeaderProps> = ({ onGoHome, onGoToProfile }) => {
       <div className="container mx-auto max-w-5xl px-4 py-3 flex justify-between items-center">
         <button onClick={onGoHome} className="text-left">
            <h1 className="text-2xl font-bold text-blue-600">
-            Trace <span className="text-gray-700">| تريس</span>
+            Aegypt
           </h1>
         </button>
         <div className="hidden sm:flex items-center space-x-4 space-x-reverse">
