@@ -162,7 +162,7 @@ const App: React.FC = () => {
         
         {!isLoading && !error && currentView === 'home' && (
           <>
-            <CreatePostWidget onNewPost={() => setShowPostForm(true)} />
+            <CreatePostWidget onAddPost={handleAddPost} />
             <div className="space-y-6">
               {posts.length > 0 ? (
                 posts.map((post) => (
@@ -199,6 +199,7 @@ const App: React.FC = () => {
             onSharePost={handleSharePost}
             following={following}
             onToggleFollow={handleToggleFollow}
+            onAddPost={handleAddPost}
           />
         )}
       </main>

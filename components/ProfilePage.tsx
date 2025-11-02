@@ -2,6 +2,7 @@ import React from 'react';
 import { Post } from '../types';
 import PostCard from './PostCard';
 import { ArrowRightIcon } from './Icons';
+import CreatePostWidget from './CreatePostWidget';
 
 interface ProfilePageProps {
   userId: string;
@@ -15,6 +16,7 @@ interface ProfilePageProps {
   onSharePost: (postId: string) => void;
   following: Set<string>;
   onToggleFollow: (userId: string) => void;
+  onAddPost: (content: string, imageUrl: string | null) => void;
 }
 
 const ProfilePage: React.FC<ProfilePageProps> = ({ 
@@ -28,7 +30,8 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
     onLikePost, 
     onSharePost,
     following,
-    onToggleFollow
+    onToggleFollow,
+    onAddPost
 }) => {
   const userPosts = posts.filter(p => p.userId === userId).sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
   const user = userPosts.length > 0 ? userPosts[0] : posts.find(p => p.userId === userId);
@@ -87,6 +90,8 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
                 </button>
             )}
         </div>
+
+        {isMyProfile && <CreatePostWidget onAddPost={onAddPost} />}
 
         <h3 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">المنشورات</h3>
         <div className="space-y-6">
