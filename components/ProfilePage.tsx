@@ -1,10 +1,9 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Post, EditableProfileData, Profile } from '../types';
 import PostCard from './PostCard';
-import { ArrowRightIcon, CameraIcon, PencilIcon, AcademicCapIcon, GlobeAltIcon, IdentificationIcon } from './Icons';
+import { ArrowRightIcon, CameraIcon, PencilIcon } from './Icons';
 import CreatePostWidget from './CreatePostWidget';
 import { uploadImage } from '../services/imageService';
-import DeleteConfirmationModal from './DeleteConfirmationModal';
 import { useTranslations } from '../hooks/useTranslations';
 
 interface ProfilePageProps {
@@ -25,7 +24,6 @@ interface ProfilePageProps {
   myAvatarUrl: string;
   onUpdateAvatar: (newImageUrl: string) => void;
   onUpdateProfile: (profileData: EditableProfileData) => Promise<void>;
-  onDeleteAccount: () => Promise<void>;
 }
 
 const ProfilePage: React.FC<ProfilePageProps> = ({ 
@@ -45,8 +43,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
     onAddPost,
     myAvatarUrl,
     onUpdateAvatar,
-    onUpdateProfile,
-    onDeleteAccount
+    onUpdateProfile
 }) => {
   const { t } = useTranslations();
   const userPosts = posts.filter(p => p.userId === userId).sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
@@ -57,9 +54,6 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
 
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   let userToDisplay: Profile | undefined = userProfile;
   if (!userToDisplay && userPosts.length > 0) {
@@ -67,32 +61,20 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
       userToDisplay = {
           username: p.username,
           avatarUrl: p.avatarUrl,
-          gender: p.gender || '',
-          qualification: p.qualification || '',
-          country: p.country || '',
       };
   }
   if (!userToDisplay && isMyProfile) {
       userToDisplay = {
           username: myDisplayName || t('newUser'),
           avatarUrl: myAvatarUrl,
-          gender: '',
-          qualification: '',
-          country: '',
       };
   }
   
   const [newUsername, setNewUsername] = useState(userToDisplay?.username || '');
-  const [newGender, setNewGender] = useState(userToDisplay?.gender || '');
-  const [newQualification, setNewQualification] = useState(userToDisplay?.qualification || '');
-  const [newCountry, setNewCountry] = useState(userToDisplay?.country || '');
 
   useEffect(() => {
     if (userToDisplay && !isEditing) {
       setNewUsername(userToDisplay.username);
-      setNewGender(userToDisplay.gender || '');
-      setNewQualification(userToDisplay.qualification || '');
-      setNewCountry(userToDisplay.country || '');
     }
   }, [userToDisplay, isEditing]);
 
@@ -119,10 +101,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
     setIsSaving(true);
     try {
         await onUpdateProfile({
-            username: newUsername.trim(),
-            gender: newGender.trim(),
-            qualification: newQualification.trim(),
-            country: newCountry.trim(),
+            username: newUsername.trim()
         });
         setIsEditing(false);
     } catch (error) {
@@ -139,19 +118,6 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
     }
   };
 
-  const handleDeleteConfirm = async () => {
-    setIsDeleting(true);
-    try {
-      await onDeleteAccount();
-      // No need to close modal or set loading, as the component will unmount on logout.
-    } catch (error) {
-      console.error("Failed to delete account:", error);
-      onShowToast(t('deleteAccountError'));
-      setIsDeleting(false);
-      setIsDeleteModalOpen(false);
-    }
-  };
-
   if (!userToDisplay) {
     return (
       <div className="text-center py-10">
@@ -163,12 +129,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
     );
   }
 
-  const hasChanges = userToDisplay ? (
-    newUsername.trim() !== userToDisplay.username ||
-    newGender.trim() !== (userToDisplay.gender || '') ||
-    newQualification.trim() !== (userToDisplay.qualification || '') ||
-    newCountry.trim() !== (userToDisplay.country || '')
-  ) : false;
+  const hasChanges = userToDisplay ? newUsername.trim() !== userToDisplay.username : false;
 
   return (
     <div>
@@ -225,62 +186,12 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
                         autoFocus
                     />
                     </div>
-                    <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('gender')}</label>
-                    <input
-                        type="text"
-                        value={newGender}
-                        onChange={(e) => setNewGender(e.target.value)}
-                        className="text-center bg-gray-100 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 w-full"
-                        placeholder={t('genderPlaceholder')}
-                    />
-                    </div>
-                    <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('qualification')}</label>
-                    <input
-                        type="text"
-                        value={newQualification}
-                        onChange={(e) => setNewQualification(e.target.value)}
-                        className="text-center bg-gray-100 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 w-full"
-                        placeholder={t('qualificationPlaceholder')}
-                    />
-                    </div>
-                    <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('country')}</label>
-                    <input
-                        type="text"
-                        value={newCountry}
-                        onChange={(e) => setNewCountry(e.target.value)}
-                        className="text-center bg-gray-100 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 w-full"
-                        placeholder={t('countryPlaceholder')}
-                    />
-                    </div>
                 </div>
 
                 ) : (
                 <>
                     <h2 className="text-3xl font-bold text-gray-800">{userToDisplay.username}</h2>
                     <p className="text-gray-500 mt-1">@{userId.substring(0,12)}...</p>
-
-                    <div className="mt-6 border-t border-gray-200 pt-4 max-w-sm mx-auto">
-                        <div className="text-start space-y-3">
-                            <div className="flex items-center">
-                                <IdentificationIcon className="w-6 h-6 text-gray-400 me-4 flex-shrink-0" />
-                                <span className="font-semibold text-gray-600">{t('gender')}:</span>
-                                <span className="ms-2 text-gray-800 truncate">{userToDisplay.gender || t('notSpecified')}</span>
-                            </div>
-                            <div className="flex items-center">
-                                <AcademicCapIcon className="w-6 h-6 text-gray-400 me-4 flex-shrink-0" />
-                                <span className="font-semibold text-gray-600">{t('qualification')}:</span>
-                                <span className="ms-2 text-gray-800 truncate">{userToDisplay.qualification || t('notSpecified')}</span>
-                            </div>
-                            <div className="flex items-center">
-                                <GlobeAltIcon className="w-6 h-6 text-gray-400 me-4 flex-shrink-0" />
-                                <span className="font-semibold text-gray-600">{t('country')}:</span>
-                                <span className="ms-2 text-gray-800 truncate">{userToDisplay.country || t('notSpecified')}</span>
-                            </div>
-                        </div>
-                    </div>
                 </>
                 )}
             </div>
@@ -343,15 +254,6 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
                                 {isSaving ? t('saving') : t('save')}
                             </button>
                         </div>
-                        <div className="mt-6 border-t pt-4 text-center">
-                            <button
-                                onClick={() => setIsDeleteModalOpen(true)}
-                                disabled={isSaving}
-                                className="font-semibold text-sm text-red-600 hover:text-red-800 hover:bg-red-50 py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {t('deleteAccountPermanently')}
-                            </button>
-                        </div>
                     </>
                 )}
             </div>
@@ -381,13 +283,6 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
                 </div>
             )}
         </div>
-
-        <DeleteConfirmationModal
-            isOpen={isDeleteModalOpen}
-            onClose={() => setIsDeleteModalOpen(false)}
-            onConfirm={handleDeleteConfirm}
-            isLoading={isDeleting}
-        />
     </div>
   );
 };

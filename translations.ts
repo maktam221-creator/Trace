@@ -44,12 +44,6 @@ export const translations = {
   },
   
   // Header
-  searchPlaceholder: {
-    ar: 'ابحث عن منشورات أو مستخدمين...',
-    en: 'Search for posts or users...',
-    es: 'Buscar publicaciones o usuarios...',
-    fr: 'Rechercher des posts ou des utilisateurs...',
-  },
   changeLanguage: {
     ar: 'تغيير اللغة',
     en: 'Change Language',
@@ -187,76 +181,6 @@ export const translations = {
     fr: 'Soyez le premier à partager vos pensées et à lancer une conversation !',
   },
 
-  // Home Page (Feed)
-  forYou: {
-    ar: 'لك',
-    en: 'For You',
-    es: 'Para ti',
-    fr: 'Pour vous',
-  },
-  followingFeed: {
-    ar: 'متابعون',
-    en: 'Following',
-    es: 'Siguiendo',
-    fr: 'Abonnements',
-  },
-  noPostsInFollowingFeedTitle: {
-    ar: 'صفحة المتابَعة فارغة',
-    en: 'Following Feed is Empty',
-    es: 'La sección de Siguiendo está vacía',
-    fr: 'Le fil d\'actualité des abonnements est vide',
-  },
-  noPostsInFollowingFeedSubtitle: {
-    ar: 'ستظهر هنا منشورات الأشخاص الذين تتابعهم.',
-    en: 'Posts from people you follow will appear here.',
-    es: 'Las publicaciones de la gente que sigues aparecerán aquí.',
-    fr: 'Les publications des personnes que vous suivez apparaîtront ici.',
-  },
-  discoverPosts: {
-    ar: 'اكتشف المستخدمين',
-    en: 'Discover Users',
-    es: 'Descubrir Usuarios',
-    fr: 'Découvrir les utilisateurs',
-  },
-
-  // Search Page
-  searchResultsFor: {
-    ar: 'نتائج البحث عن:',
-    en: 'Search results for:',
-    es: 'Resultados de búsqueda para:',
-    fr: 'Résultats de recherche pour :',
-  },
-  discoverUsers: {
-    ar: 'اكتشف',
-    en: 'Discover',
-    es: 'Descubrir',
-    fr: 'Découvrir',
-  },
-  noResultsFound: {
-    ar: 'لم يتم العثور على نتائج',
-    en: 'No results found',
-    es: 'No se encontraron resultados',
-    fr: 'Aucun résultat trouvé',
-  },
-  noOtherUsers: {
-    ar: 'لا يوجد مستخدمون آخرون للعرض',
-    en: 'No other users to display',
-    es: 'No hay otros usuarios para mostrar',
-    fr: 'Aucun autre utilisateur à afficher',
-  },
-  tryDifferentQuery: {
-    ar: 'جرّب البحث عن كلمة أخرى.',
-    en: 'Try searching for something else.',
-    es: 'Intenta buscar otra cosa.',
-    fr: 'Essayez de rechercher autre chose.',
-  },
-  newUsersWillAppearHere: {
-    ar: 'عندما يقوم مستخدمون جدد بالتسجيل، سيظهرون هنا.',
-    en: 'When new users sign up, they will appear here.',
-    es: 'Cuando se registren nuevos usuarios, aparecerán aquí.',
-    fr: 'Lorsque de nouveaux utilisateurs s\'inscriront, ils apparaîtront ici.',
-  },
-
   // Profile Page
   back: {
     ar: 'العودة',
@@ -269,42 +193,6 @@ export const translations = {
     en: 'Change profile picture',
     es: 'Cambiar foto de perfil',
     fr: 'Changer de photo de profil',
-  },
-  gender: {
-    ar: 'النوع',
-    en: 'Gender',
-    es: 'Género',
-    fr: 'Genre',
-  },
-  genderPlaceholder: {
-    ar: 'مثال: ذكر، أنثى',
-    en: 'e.g., Male, Female',
-    es: 'ej., Hombre, Mujer',
-    fr: 'ex., Homme, Femme',
-  },
-  qualification: {
-    ar: 'المؤهل الدراسي',
-    en: 'Qualification',
-    es: 'Cualificación',
-    fr: 'Qualification',
-  },
-  qualificationPlaceholder: {
-    ar: 'مثال: هندسة برمجيات',
-    en: 'e.g., Software Engineering',
-    es: 'ej., Ingeniería de Software',
-    fr: 'ex., Ingénierie Logicielle',
-  },
-  country: {
-    ar: 'الدولة',
-    en: 'Country',
-    es: 'País',
-    fr: 'Pays',
-  },
-  countryPlaceholder: {
-    ar: 'مثال: مصر',
-    en: 'e.g., Egypt',
-    es: 'ej., Egipto',
-    fr: 'ex., Égypte',
   },
   followers: {
     ar: 'المتابعون',
@@ -347,12 +235,6 @@ export const translations = {
     en: 'Saving...',
     es: 'Guardando...',
     fr: 'Enregistrement...',
-  },
-  deleteAccountPermanently: {
-    ar: 'حذف الحساب نهائياً',
-    en: 'Permanently Delete Account',
-    es: 'Eliminar cuenta permanentemente',
-    fr: 'Supprimer le compte définitivement',
   },
   noPostsYet: {
     ar: 'لا توجد منشورات من هذا المستخدم بعد.',
@@ -445,10 +327,10 @@ export const translations = {
   removeImageAria: {
     ar: 'إزالة الصورة',
     en: 'Remove image',
-    es: 'Quitar imagen',
+    es: 'Eliminar imagen',
     fr: 'Supprimer l\'image',
   },
-
+  
   // Comment Section
   addCommentPlaceholder: {
     ar: 'أضف تعليقاً...',
@@ -463,158 +345,54 @@ export const translations = {
     fr: 'Envoyer le commentaire',
   },
   noCommentsYet: {
-    ar: 'لا توجد تعليقات بعد.',
-    en: 'No comments yet.',
-    es: 'Aún no hay comentarios.',
-    fr: 'Aucun commentaire pour le moment.',
+    ar: 'لا توجد تعليقات بعد. كن أول من يعلق!',
+    en: 'No comments yet. Be the first to comment!',
+    es: 'Aún no hay comentarios. ¡Sé el primero en comentar!',
+    fr: 'Pas encore de commentaires. Soyez le premier à commenter !',
   },
   currentUserAlt: {
-    ar: 'مستخدم جديد',
+    ar: 'المستخدم الحالي',
     en: 'Current user',
     es: 'Usuario actual',
     fr: 'Utilisateur actuel',
   },
-  
-  // Bottom Nav Bar
-  home: {
-    ar: 'الرئيسية',
-    en: 'Home',
-    es: 'Inicio',
-    fr: 'Accueil',
-  },
-  newPostAria: {
-    ar: 'منشور جديد',
-    en: 'New Post',
-    es: 'Nueva publicación',
-    fr: 'Nouveau post',
-  },
-  myProfile: {
-    ar: 'ملفي',
-    en: 'My Profile',
-    es: 'Mi perfil',
-    fr: 'Mon profil',
-  },
-  
-  // Follow Suggestions
-  welcomeToAegypt: {
-    ar: 'مرحباً بك في Aegypt!',
-    en: 'Welcome to Aegypt!',
-    es: '¡Bienvenido a Aegypt!',
-    fr: 'Bienvenue sur Aegypt !',
-  },
-  followSuggestionPrompt: {
-    ar: 'ابدأ بمتابعة بعض الحسابات المثيرة للاهتمام.',
-    en: 'Start by following some interesting accounts.',
-    es: 'Empieza siguiendo algunas cuentas interesantes.',
-    fr: 'Commencez par suivre quelques comptes intéressants.',
-  },
-  continueToHome: {
-    ar: 'متابعة إلى الصفحة الرئيسية',
-    en: 'Continue to Homepage',
-    es: 'Continuar a la página de inicio',
-    fr: 'Continuer vers la page d\'accueil',
-  },
-  
-  // Delete Confirmation Modal
-  deleteAccountConfirmTitle: {
-    ar: 'تأكيد حذف الحساب',
-    en: 'Confirm Account Deletion',
-    es: 'Confirmar eliminación de cuenta',
-    fr: 'Confirmer la suppression du compte',
-  },
-  deleteAccountConfirmMessage: {
-    ar: 'هل أنت متأكد من رغبتك في حذف حسابك بشكل دائم؟ سيتم حذف جميع منشوراتك وتعليقاتك ولا يمكن التراجع عن هذا الإجراء.',
-    en: 'Are you sure you want to permanently delete your account? All your posts and comments will be removed, and this action cannot be undone.',
-    es: '¿Estás seguro de que quieres eliminar tu cuenta permanentemente? Todas tus publicaciones y comentarios serán eliminados, y esta acción no se puede deshacer.',
-    fr: 'Êtes-vous sûr de vouloir supprimer définitivement votre compte ? Tous vos posts et commentaires seront supprimés, et cette action est irréversible.',
-  },
-  deleteAccountConfirmButton: {
-    ar: 'نعم، احذف حسابي',
-    en: 'Yes, delete my account',
-    es: 'Sí, eliminar mi cuenta',
-    fr: 'Oui, supprimer mon compte',
-  },
-  deleting: {
-    ar: 'جاري الحذف...',
-    en: 'Deleting...',
-    es: 'Eliminando...',
-    fr: 'Suppression...',
-  },
-  
-  // Notifications
-  notifications: {
-    ar: 'الإشعارات',
-    en: 'Notifications',
-    es: 'Notificaciones',
-    fr: 'Notifications',
-  },
-  markAllAsRead: {
-    ar: 'تحديد الكل كمقروء',
-    en: 'Mark all as read',
-    es: 'Marcar todo como leído',
-    fr: 'Marquer tout comme lu',
-  },
-  noNotifications: {
-    ar: 'لا توجد إشعارات بعد',
-    en: 'No notifications yet',
-    es: 'Aún no hay notificaciones',
-    fr: 'Aucune notification pour le moment',
-  },
-  notificationFollow: {
-    ar: 'بدأ بمتابعتك.',
-    en: 'started following you.',
-    es: 'ha comenzado a seguirte.',
-    fr: 'a commencé à vous suivre.',
-  },
-  notificationLike: {
-    ar: 'أعجب بمنشورك:',
-    en: 'liked your post:',
-    es: 'le ha gustado tu publicación:',
-    fr: 'a aimé votre publication :',
-  },
-  notificationComment: {
-    ar: 'علّق على منشورك:',
-    en: 'commented on your post:',
-    es: 'ha comentado en tu publicación:',
-    fr: 'a commenté votre publication :',
-  },
 
   // Toasts / Notifications
   avatarUpdatedSuccess: {
-    ar: 'تم تحديث صورة ملفك الشخصي بنجاح!',
-    en: 'Profile picture updated successfully!',
-    es: '¡Foto de perfil actualizada con éxito!',
-    fr: 'Photo de profil mise à jour avec succès !',
+    ar: 'تم تحديث الصورة الرمزية بنجاح.',
+    en: 'Avatar updated successfully.',
+    es: 'Avatar actualizado correctamente.',
+    fr: 'Avatar mis à jour avec succès.',
   },
   profileUpdatedSuccess: {
-    ar: 'تم تحديث ملفك الشخصي بنجاح!',
-    en: 'Profile updated successfully!',
-    es: '¡Perfil actualizado con éxito!',
-    fr: 'Profil mis à jour avec succès !',
+    ar: 'تم تحديث الملف الشخصي بنجاح.',
+    en: 'Profile updated successfully.',
+    es: 'Perfil actualizado correctamente.',
+    fr: 'Profil mis à jour avec succès.',
   },
   profileUpdateError: {
-    ar: 'حدث خطأ أثناء تحديث الملف الشخصي.',
-    en: 'An error occurred while updating the profile.',
-    es: 'Ocurrió un error al actualizar el perfil.',
-    fr: 'Une erreur s\'est produite lors de la mise à jour du profil.',
+    ar: 'فشل تحديث الملف الشخصي.',
+    en: 'Failed to update profile.',
+    es: 'Error al actualizar el perfil.',
+    fr: 'Échec de la mise à jour du profil.',
   },
   postAddedSuccess: {
-    ar: 'تم نشر منشورك بنجاح!',
-    en: 'Your post was published successfully!',
-    es: '¡Tu publicación se ha publicado con éxito!',
-    fr: 'Votre publication a été publiée avec succès !',
-  },
-  unfollowedUser: {
-    ar: 'تم إلغاء متابعة {username}',
-    en: 'Unfollowed {username}',
-    es: 'Dejaste de seguir a {username}',
-    fr: 'Vous ne suivez plus {username}',
+    ar: 'تم نشر منشورك بنجاح.',
+    en: 'Your post was published successfully.',
+    es: 'Tu publicación se ha publicado correctamente.',
+    fr: 'Votre publication a été publiée avec succès.',
   },
   followedUser: {
-    ar: 'تمت متابعة {username}',
-    en: 'Now following {username}',
-    es: 'Ahora sigues a {username}',
-    fr: 'Vous suivez maintenant {username}',
+    ar: 'أنت تتابع {username} الآن.',
+    en: 'You are now following {username}.',
+    es: 'Ahora sigues a {username}.',
+    fr: 'Vous suivez maintenant {username}.',
+  },
+  unfollowedUser: {
+    ar: 'لقد ألغيت متابعة {username}.',
+    en: 'You have unfollowed {username}.',
+    es: 'Has dejado de seguir a {username}.',
+    fr: 'Vous ne suivez plus {username}.',
   },
   logoutSuccess: {
     ar: 'تم تسجيل الخروج بنجاح.',
@@ -624,33 +402,9 @@ export const translations = {
   },
   logoutError: {
     ar: 'حدث خطأ أثناء تسجيل الخروج.',
-    en: 'An error occurred while logging out.',
-    es: 'Ocurrió un error al cerrar la sesión.',
-    fr: 'Une erreur s\'est produite lors de la déconnexion.',
-  },
-  deleteAccountRelogin: {
-    ar: 'لا يمكن إتمام العملية. يرجى تسجيل الدخول مرة أخرى.',
-    en: 'Could not complete the action. Please log in again.',
-    es: 'No se pudo completar la acción. Por favor, inicia sesión de nuevo.',
-    fr: 'Impossible de terminer l\'action. Veuillez vous reconnecter.',
-  },
-  deleteAccountSuccess: {
-    ar: 'تم حذف حسابك وجميع بياناتك المحفوظة بنجاح.',
-    en: 'Your account and all saved data have been successfully deleted.',
-    es: 'Tu cuenta y todos tus datos guardados han sido eliminados con éxito.',
-    fr: 'Votre compte et toutes vos données sauvegardées ont été supprimés avec succès.',
-  },
-  deleteAccountRequiresRelogin: {
-    ar: 'تم حذف بياناتك من التطبيق. لحذف الحساب نهائياً، أعد تسجيل الدخول ثم حاول مرة أخرى.',
-    en: 'Your data has been removed from the app. To permanently delete the account, please log in again and retry.',
-    es: 'Tus datos han sido eliminados de la aplicación. Para eliminar la cuenta permanentemente, por favor inicia sesión de nuevo e inténtalo otra vez.',
-    fr: 'Vos données ont été supprimées de l\'application. Pour supprimer définitivement le compte, veuillez vous reconnecter et réessayer.',
-  },
-  deleteAccountError: {
-    ar: 'تم تسجيل خروجك. حدث خطأ أثناء الحذف النهائي للحساب.',
-    en: 'You have been logged out. An error occurred during the final account deletion.',
-    es: 'Has cerrado sesión. Ocurrió un error durante la eliminación final de la cuenta.',
-    fr: 'Vous avez été déconnecté. Une erreur s\'est produite lors de la suppression finale du compte.',
+    en: 'Error signing out.',
+    es: 'Error al cerrar la sesión.',
+    fr: 'Erreur lors de la déconnexion.',
   },
   imageUploadFailed: {
     ar: 'فشل رفع الصورة. الرجاء المحاولة مرة أخرى.',
@@ -665,19 +419,124 @@ export const translations = {
     fr: 'Échec de la mise à jour de l\'image. Veuillez réessayer.',
   },
   postCopiedToClipboard: {
-    ar: 'تم نسخ المنشور إلى الحافظة',
-    en: 'Post copied to clipboard',
-    es: 'Publicación copiada al portapapeles',
-    fr: 'Publication copiée dans le presse-papiers',
+    ar: 'تم نسخ محتوى المنشور إلى الحافظة.',
+    en: 'Post content copied to clipboard.',
+    es: 'Contenido de la publicación copiado al portapapeles.',
+    fr: 'Contenu de la publication copié dans le presse-papiers.',
   },
   postShareAndCopyFailed: {
-    ar: 'فشلت المشاركة والنسخ',
-    en: 'Share and copy failed',
-    es: 'Error al compartir y copiar',
-    fr: 'Échec du partage et de la copie',
+    ar: 'المشاركة غير مدعومة، وفشل النسخ إلى الحافظة.',
+    en: 'Sharing not supported, and clipboard copy failed.',
+    es: 'Compartir no es compatible y la copia al portapapeles falló.',
+    fr: 'Partage non pris en charge, et la copie dans le presse-papiers a échoué.',
   },
 
-  // Time Ago
+  // Bottom Nav Bar
+  home: {
+    ar: 'الرئيسية',
+    en: 'Home',
+    es: 'Inicio',
+    fr: 'Accueil',
+  },
+  myProfile: {
+    ar: 'ملفي',
+    en: 'My Profile',
+    es: 'Mi Perfil',
+    fr: 'Mon Profil',
+  },
+  newPostAria: {
+    ar: 'إنشاء منشور جديد',
+    en: 'Create a new post',
+    es: 'Crear una nueva publicación',
+    fr: 'Créer une nouvelle publication',
+  },
+
+  // FIX: Add missing translation keys
+  // Follow Suggestions
+  welcomeToAegypt: {
+    ar: 'مرحباً بك في Aegypt',
+    en: 'Welcome to Aegypt',
+    es: 'Bienvenido a Aegypt',
+    fr: 'Bienvenue sur Aegypt'
+  },
+  followSuggestionPrompt: {
+    ar: 'نقترح عليك متابعة بعض الحسابات لتبدأ.',
+    en: 'We suggest following some accounts to get started.',
+    es: 'Te sugerimos seguir algunas cuentas para empezar.',
+    fr: 'Nous vous suggérons de suivre quelques comptes pour commencer.'
+  },
+  continueToHome: {
+    ar: 'المتابعة إلى الصفحة الرئيسية',
+    en: 'Continue to Home',
+    es: 'Continuar a la página de inicio',
+    fr: 'Continuer vers l\'accueil'
+  },
+
+  // Delete Account Modal
+  deleteAccountConfirmTitle: {
+    ar: 'هل أنت متأكد من حذف الحساب؟',
+    en: 'Delete Account?',
+    es: '¿Eliminar cuenta?',
+    fr: 'Supprimer le compte ?'
+  },
+  deleteAccountConfirmMessage: {
+    ar: 'هذا الإجراء لا يمكن التراجع عنه. سيتم حذف جميع بياناتك بشكل دائم.',
+    en: 'This action cannot be undone. All your data will be permanently deleted.',
+    es: 'Esta acción no se puede deshacer. Todos tus datos serán eliminados permanentemente.',
+    fr: 'Cette action est irréversible. Toutes vos données seront supprimées définitivement.'
+  },
+  deleting: {
+    ar: 'جاري الحذف...',
+    en: 'Deleting...',
+    es: 'Eliminando...',
+    fr: 'Suppression...'
+  },
+  deleteAccountConfirmButton: {
+    ar: 'نعم، احذف حسابي',
+    en: 'Yes, delete my account',
+    es: 'Sí, eliminar mi cuenta',
+    fr: 'Oui, supprimer mon compte'
+  },
+
+  // Notifications
+  notificationLike: {
+    ar: 'أعجب بمنشورك:',
+    en: 'liked your post:',
+    es: 'le ha gustado tu publicación:',
+    fr: 'a aimé votre publication :'
+  },
+  notificationComment: {
+    ar: 'علّق على منشورك:',
+    en: 'commented on your post:',
+    es: 'comentó en tu publicación:',
+    fr: 'a commenté votre publication :'
+  },
+  notificationFollow: {
+    ar: 'بدأ بمتابعتك.',
+    en: 'started following you.',
+    es: 'ha comenzado a seguirte.',
+    fr: 'a commencé à vous suivre.'
+  },
+  notifications: {
+    ar: 'الإشعارات',
+    en: 'Notifications',
+    es: 'Notificaciones',
+    fr: 'Notifications'
+  },
+  markAllAsRead: {
+    ar: 'تحديد الكل كمقروء',
+    en: 'Mark all as read',
+    es: 'Marcar todo como leído',
+    fr: 'Marquer tout comme lu'
+  },
+  noNotifications: {
+    ar: 'لا توجد إشعارات بعد.',
+    en: 'You have no notifications yet.',
+    es: 'Aún no tienes notificaciones.',
+    fr: 'Vous n\'avez aucune notification pour le moment.'
+  },
+
+  // Time formatting
   timeYears: {
     ar: 'منذ {count} سنوات',
     en: '{count} years ago',
@@ -710,8 +569,8 @@ export const translations = {
   },
   timeNow: {
     ar: 'الآن',
-    en: 'Now',
-    es: 'Ahora',
-    fr: 'Maintenant',
+    en: 'just now',
+    es: 'justo ahora',
+    fr: 'à l\'instant',
   },
 };

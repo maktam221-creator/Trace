@@ -11,9 +11,6 @@ export interface Post {
   userId: string;
   username: string;
   avatarUrl: string;
-  gender?: string;
-  qualification?: string;
-  country?: string;
   content: string;
   timestamp: Date;
   imageUrl?: string;
@@ -25,29 +22,21 @@ export interface Post {
 export interface Profile {
   username: string;
   avatarUrl: string;
-  gender: string;
-  qualification: string;
-  country: string;
   followers?: string[];
   following?: string[];
 }
 
 export interface EditableProfileData {
   username: string;
-  gender: string;
-  qualification: string;
-  country: string;
 }
 
+// FIX: Add Notification interface
 export interface Notification {
   id: string;
-  recipientId: string;
-  actorId: string;
+  type: 'like' | 'comment' | 'follow';
   actorUsername: string;
   actorAvatarUrl: string;
-  type: 'like' | 'comment' | 'follow';
-  postId?: string;
   postContentSample?: string;
-  read: boolean;
   timestamp: Date;
+  read: boolean;
 }
