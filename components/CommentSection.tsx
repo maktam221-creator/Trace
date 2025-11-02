@@ -5,9 +5,10 @@ import { PaperAirplaneIcon } from './Icons';
 interface CommentSectionProps {
     comments: Comment[];
     onAddComment: (commentText: string) => void;
+    myAvatarUrl: string;
 }
 
-const CommentSection: React.FC<CommentSectionProps> = ({ comments, onAddComment }) => {
+const CommentSection: React.FC<CommentSectionProps> = ({ comments, onAddComment, myAvatarUrl }) => {
     const [newComment, setNewComment] = useState('');
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -36,7 +37,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ comments, onAddComment 
     return (
         <div className="mt-4 pt-4 border-t border-gray-100">
             <form onSubmit={handleSubmit} className="flex items-start space-x-3 space-x-reverse mb-4">
-                <img src={`https://picsum.photos/seed/new-user/48`} alt="مستخدم جديد" className="w-9 h-9 rounded-full mt-1" />
+                <img src={myAvatarUrl} alt="مستخدم جديد" className="w-9 h-9 rounded-full mt-1 object-cover" />
                 <div className="flex-1 relative">
                     <textarea
                         value={newComment}
@@ -63,7 +64,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ comments, onAddComment 
             <div className="space-y-4">
                 {comments.length > 0 ? comments.map(comment => (
                     <div key={comment.id} className="flex items-start space-x-3 space-x-reverse">
-                         <img src={`https://picsum.photos/seed/${comment.userId}/48`} alt={comment.username} className="w-9 h-9 rounded-full" />
+                         <img src={comment.userId === 'new-user' ? myAvatarUrl : `https://picsum.photos/seed/${comment.userId}/48`} alt={comment.username} className="w-9 h-9 rounded-full object-cover" />
                          <div className="flex-1 bg-gray-100 rounded-xl p-3">
                              <div className="flex items-baseline space-x-2 space-x-reverse">
                                 <span className="font-bold text-sm">{comment.username}</span>

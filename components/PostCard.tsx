@@ -10,9 +10,10 @@ interface PostCardProps {
   onShowToast: (message: string) => void;
   onLikePost: (postId: string) => void;
   onSharePost: (postId: string) => void;
+  myAvatarUrl: string;
 }
 
-const PostCard: React.FC<PostCardProps> = ({ post, onSelectUser, onAddComment, onShowToast, onLikePost, onSharePost }) => {
+const PostCard: React.FC<PostCardProps> = ({ post, onSelectUser, onAddComment, onShowToast, onLikePost, onSharePost, myAvatarUrl }) => {
   const [showComments, setShowComments] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
 
@@ -133,6 +134,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onSelectUser, onAddComment, o
         <CommentSection 
             comments={post.comments || []}
             onAddComment={handleAddComment}
+            myAvatarUrl={myAvatarUrl}
         />
       )}
     </div>

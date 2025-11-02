@@ -21,6 +21,7 @@ const App: React.FC = () => {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [following, setFollowing] = useState<Set<string>>(new Set());
+  const [myAvatarUrl, setMyAvatarUrl] = useState(`https://picsum.photos/seed/${MY_USER_ID}/48`);
 
   const loadInitialPosts = useCallback(async () => {
     try {
@@ -52,13 +53,26 @@ const App: React.FC = () => {
       setToastMessage(null);
     }, 3000);
   };
+  
+  const handleUpdateAvatar = (newImageUrl: string) => {
+    setMyAvatarUrl(newImageUrl);
+    // Also update the avatar in all existing posts by the user
+    setPosts(currentPosts => 
+        currentPosts.map(post => 
+            post.userId === MY_USER_ID 
+            ? { ...post, avatarUrl: newImageUrl }
+            : post
+        )
+    );
+    showToast('تم تحديث صورة ملفك الشخصي بنجاح!');
+  };
 
   const handleAddPost = (content: string, imageUrl: string | null) => {
     const newPost: Post = {
       id: Date.now().toString(),
       userId: MY_USER_ID,
       username: 'مستخدم جديد',
-      avatarUrl: `https://picsum.photos/seed/${Date.now()}/48`,
+      avatarUrl: myAvatarUrl,
       content,
       timestamp: new Date(),
       comments: [],
@@ -162,7 +176,7 @@ const App: React.FC = () => {
         
         {!isLoading && !error && currentView === 'home' && (
           <>
-            <CreatePostWidget onAddPost={handleAddPost} />
+            <CreatePostWidget onAddPost={handleAddPost} myAvatarUrl={myAvatarUrl} />
             <div className="space-y-6">
               {posts.length > 0 ? (
                 posts.map((post) => (
@@ -174,6 +188,7 @@ const App: React.FC = () => {
                     onShowToast={showToast}
                     onLikePost={handleLikePost}
                     onSharePost={handleSharePost}
+                    myAvatarUrl={myAvatarUrl}
                   />
                 ))
               ) : (
@@ -200,6 +215,8 @@ const App: React.FC = () => {
             following={following}
             onToggleFollow={handleToggleFollow}
             onAddPost={handleAddPost}
+            myAvatarUrl={myAvatarUrl}
+            onUpdateAvatar={handleUpdateAvatar}
           />
         )}
       </main>

@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Post } from '../types';
 import PostCard from './PostCard';
-import { ArrowRightIcon } from './Icons';
+import { ArrowRightIcon, CameraIcon } from './Icons';
 import CreatePostWidget from './CreatePostWidget';
 
 interface ProfilePageProps {
@@ -17,6 +17,8 @@ interface ProfilePageProps {
   following: Set<string>;
   onToggleFollow: (userId: string) => void;
   onAddPost: (content: string, imageUrl: string | null) => void;
+  myAvatarUrl: string;
+  onUpdateAvatar: (newImageUrl: string) => void;
 }
 
 const ProfilePage: React.FC<ProfilePageProps> = ({ 
@@ -31,25 +33,37 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
     onSharePost,
     following,
     onToggleFollow,
-    onAddPost
+    onAddPost,
+    myAvatarUrl,
+    onUpdateAvatar
 }) => {
   const userPosts = posts.filter(p => p.userId === userId).sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-  const user = userPosts.length > 0 ? userPosts[0] : posts.find(p => p.userId === userId);
+  let user: Post | Omit<Post, 'id'| 'content' | 'timestamp'> | undefined = userPosts.length > 0 ? userPosts[0] : posts.find(p => p.userId === userId);
   const isMyProfile = userId === myUserId;
   const isFollowing = following.has(userId);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Special handling for my own profile to ensure it always renders, even without posts
+  if (isMyProfile && !user) {
+    user = {
+        userId: myUserId,
+        username: 'مستخدم جديد',
+        avatarUrl: myAvatarUrl,
+    }
+  }
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            onUpdateAvatar(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+    }
+  };
 
   if (!user) {
-    // A special case for "new-user" who might not have posts yet
-    if (userId === 'new-user') {
-      return (
-        <div className="text-center py-10">
-          <p className="text-gray-600">هذا ملفك الشخصي. لم تقم بنشر أي شيء بعد.</p>
-          <button onClick={onBack} className="text-blue-600 hover:underline mt-4 font-semibold">
-            العودة إلى الصفحة الرئيسية
-          </button>
-        </div>
-      );
-    }
     return (
       <div className="text-center py-10">
         <p className="text-gray-600">لم يتم العثور على المستخدم.</p>
@@ -70,11 +84,32 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
         </div>
         
         <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6 mb-8 text-center">
-            <img 
-                src={user.avatarUrl.replace('/48', '/128')} // Get a larger image
-                alt={user.username}
-                className="w-32 h-32 rounded-full object-cover mx-auto mb-4 border-4 border-white shadow-md"
-            />
+            <div className="relative w-32 h-32 mx-auto mb-4">
+                <img 
+                    src={isMyProfile ? myAvatarUrl.replace('/48', '/128') : user.avatarUrl.replace('/48', '/128')}
+                    alt={user.username}
+                    className="w-full h-full rounded-full object-cover border-4 border-white shadow-md"
+                />
+                {isMyProfile && (
+                    <>
+                         <input 
+                            type="file" 
+                            ref={fileInputRef} 
+                            className="hidden" 
+                            accept="image/*"
+                            onChange={handleImageChange}
+                        />
+                        <button
+                            onClick={() => fileInputRef.current?.click()}
+                            className="absolute bottom-1 right-1 bg-blue-600 text-white rounded-full p-2 hover:bg-blue-700 transition-transform transform hover:scale-110 focus:outline-none focus:ring-2 ring-white ring-offset-2 ring-offset-blue-600"
+                            aria-label="تغيير الصورة الشخصية"
+                        >
+                            <CameraIcon className="w-5 h-5" />
+                        </button>
+                    </>
+                )}
+            </div>
+
             <h2 className="text-3xl font-bold text-gray-800">{user.username}</h2>
             <p className="text-gray-500 mt-1">@{user.userId}</p>
             {!isMyProfile && (
@@ -91,7 +126,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
             )}
         </div>
 
-        {isMyProfile && <CreatePostWidget onAddPost={onAddPost} />}
+        {isMyProfile && <CreatePostWidget onAddPost={onAddPost} myAvatarUrl={myAvatarUrl} />}
 
         <h3 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">المنشورات</h3>
         <div className="space-y-6">
@@ -105,6 +140,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
                       onShowToast={onShowToast}
                       onLikePost={onLikePost}
                       onSharePost={onSharePost}
+                      myAvatarUrl={myAvatarUrl}
                     />
                 ))
             ) : (

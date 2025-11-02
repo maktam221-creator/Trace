@@ -3,9 +3,10 @@ import { PhotoIcon, XCircleIcon } from './Icons';
 
 interface CreatePostWidgetProps {
   onAddPost: (content: string, imageUrl: string | null) => void;
+  myAvatarUrl: string;
 }
 
-const CreatePostWidget: React.FC<CreatePostWidgetProps> = ({ onAddPost }) => {
+const CreatePostWidget: React.FC<CreatePostWidgetProps> = ({ onAddPost, myAvatarUrl }) => {
   const [content, setContent] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -45,7 +46,7 @@ const CreatePostWidget: React.FC<CreatePostWidgetProps> = ({ onAddPost }) => {
       <form onSubmit={handleSubmit}>
         <div className="flex items-start space-x-3 space-x-reverse">
           <img
-            src="https://picsum.photos/seed/new-user/48"
+            src={myAvatarUrl}
             alt="مستخدم جديد"
             className="w-12 h-12 rounded-full object-cover"
           />
